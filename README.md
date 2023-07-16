@@ -1,5 +1,42 @@
 # Alyra Projet final - Registre de sécurité
 
+## Le contexte
+
+Tout employeur doit assurer la sécurité et la santé au travail de ses salariés (Art. L4121-1 du code du travail). 
+
+L’employeur  doit garantir que le bâtiment accueillant les travailleurs (ERT) et le public (ERP) est conforme aux normes de sécurité.
+
+L’employeur doit effectuer des vérifications générales périodiques (VGP) sur tout équipement pouvant présenter un danger en cas de dysfonctionnement (chauffage, électricité, …) et sur les moyens de lutte contre l’incendie (extincteur, alarme incendie, désenfumage, …).
+
+Les vérifications générales périodiques (VGP) sont annotées dans un registre qui doit être à disposition dans tout bâtiment ERT ou ERP. 
+
+Il est appelé **Registre de Sécurité** et fait foi en cas d’incident (incendie, accident, maladie professionnelles, …)
+
+Le **Registre de Sécurité** est le plus souvent un document papier. 
+
+Il existe des versions digitalisées dont les informations sont centralisées.
+
+## Le besoin
+
+Création d’un registre de sécurité suite à une vérification.
+
+Le registre de sécurité est validé par le vérificateur et le vérifié.
+
+Le registre de sécurité une fois créé ne peut être modifié.
+
+Le registre de sécurité est public.
+
+## La solution
+
+Ce registre de sécurité est stocké sur la blockchain par le moyen d’une application décentralisée.
+
+Le choix de la technologie blockchain est motivée pour son caractère infalsifiable, sa traçabilité, etc.
+
+Les registres de sécurités sont consultables librement.
+
+(Extra) Le registre de sécurité permet au travers de méta données de constituer un rapport détaillé
+
+
 ---
 
 ## 1. Ressources
