@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.2.1] (2023-07-23)
+
+### fix: demo video missing
+
+- Add demo video
+
+---
+
+## [0.2.0] (2023-07-23)
+
+### cleanup: Cleanup + README update
+
+- Some cleanup 
+- Add Vercel deployment
+- Add demo video
+
+---
+
 ## [0.1.2] (2023-07-22)
 
 ### feat: backend / frontend
