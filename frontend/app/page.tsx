@@ -12,8 +12,6 @@ const Home = () => {
     const [loading, setLoading] = useState(false)
 
     useEffect(() => {
-        console.log("/page company?: " + company)
-        console.log("/page verifier?: " + verifier)
         setLoading(false)
     }, [address, isConnected])
 

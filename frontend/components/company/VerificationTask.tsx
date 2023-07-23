@@ -128,7 +128,7 @@ export const VerificationTask = () => {
                 verifier: task.verifier,
                 verifierCompanyName: verifierProfile?.nameCompany ?? "",
                 verifierAddressName: verifierProfile?.addressName ?? "",
-                verifierSiret: verifierProfile?.siret ?? "qqq",
+                verifierSiret: verifierProfile?.siret ?? "",
                 verifierApprovalNumber: verifierProfile?.approvalNumber ?? "",
                 verifierAccount: verifierProfile?.account ?? "0x",
                 verifierName: verifierProfile?.name ?? "",
@@ -371,8 +371,8 @@ export const VerificationTask = () => {
 
                     </div>
 
-                    {!loading && verificationTask().map((data: IVerificationTaskCreatedv2) =>
-                        <div className="flex flex-col md:grid md:grid-cols-11 text-xs text-center
+                    {!loading && verificationTask().map((data: IVerificationTaskCreatedv2, index) =>
+                        <div key={index} className="flex flex-col md:grid md:grid-cols-11 text-xs text-center
                             border-t border-t-gray-600 md:border-0  pb-3 md:p-0 md:my-0
                             bg-gradient-to-b from-gray-800 to-gray-900
                             md:bg-gradient-to-t md:from-gray-900 md:to-gray-900
