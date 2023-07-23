@@ -8,8 +8,7 @@ import {useIdentityContext} from "@/contexts/Identity";
 
 export const VerifierModalForm = ({closeModal}: {closeModal:  MouseEventHandler<HTMLDivElement | HTMLButtonElement> } ) => {
     const {address, isConnected} = useAccount()
-    const {setRefreshScreen, refreshScreen} = useIdentityContext()
-
+    const {setRefreshScreen, refreshScreen, setVerifier} = useIdentityContext()
 
     const [nameVerifier, setNameVerifier] = useState("")
     const [addressVerifier, setAddressVerifier] = useState("")
@@ -59,7 +58,7 @@ export const VerifierModalForm = ({closeModal}: {closeModal:  MouseEventHandler<
                 })
             })
             .finally(() => {
-
+                setVerifier(true)
                 setVerifierAdded(nameVerifier)
                 setRefresh(Math.random())
                 setRefreshScreen(Math.random())

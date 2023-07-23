@@ -219,8 +219,8 @@ export const VerificationTaskForVerifier = () => {
                         <div className="  md:border-gray-900 md:border-x">Date de création</div>
 
                     </div>
-                    {verificationTasks.map((data: IVerificationTaskCreated) =>
-                        <div className="flex flex-col md:grid md:grid-cols-11 text-xs text-center
+                    {verificationTasks.map((data: IVerificationTaskCreated, index) =>
+                        <div key={index} className="flex flex-col md:grid md:grid-cols-11 text-xs text-center
                             border-t border-t-gray-600 md:border-0  pb-3 md:p-0 md:my-0
                             bg-gradient-to-b from-gray-800 to-gray-900
                             md:bg-gradient-to-t md:from-gray-900 md:to-gray-900

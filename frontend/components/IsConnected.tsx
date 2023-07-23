@@ -68,7 +68,16 @@ const IsConnected = ({ children, asVerifier, asCompany }: {
 
     return (
         <Loader isLoading={loading}>
-            {isConnected ? children : <>Not connected</>}
+            {isConnected ? children :
+                <div className="flex flex-row">
+                    <div className="border-t border-t-rose-500 text-center w-1/2 mt-10 p-5
+                    bg-gradient-to-t from-gray-700 to-gray-800 bg-gray-700 rounded mx-auto
+                     ">
+                        <p>Ho, n'oublies pas de te connecter à ton wallet1</p>
+
+                    </div>
+                </div>
+            }
         </Loader>
     )
 }

@@ -39,8 +39,7 @@ export const VerificationTaskMenu = () => {
             })
             .finally(() => {
                 setApproveVerificationTaskRefresh(true)
-                setRefresh(selectedVerificationTask)
-                setRefreshScreen(selectedVerificationTask)
+                setRefreshScreen(Math.random())
                 setLoading(false)
             })
     }
@@ -59,7 +58,7 @@ export const VerificationTaskMenu = () => {
                                 onClick={() => submitUpdateVerificationTask("approve")}
                         >Approuver</button>
 
-                        <button className="hover:bg-amber-500/25 hover:bg-gray-800  px-2 font-light leading-6 text-center md:text-left
+                        <button className="hover:bg-amber-500/30 hover:bg-gray-800  px-2 font-light leading-6 text-center md:text-left
                                 md:leading-7 text-amber-400"
                                 onClick={() => submitUpdateVerificationTask("approveWithReservation")}
                         >Approuver sous réserve</button>
