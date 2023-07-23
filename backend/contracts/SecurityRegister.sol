@@ -21,11 +21,16 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 contract SecurityRegister is ERC721URIStorage {
     using Counters for Counters.Counter;
 
-    struct Company {
+    struct CompanyRegister {
         string name;
         string addressName;
         string siret;
-        uint256 numberOfRegisters;
+    }
+
+    struct CompanySite {
+        CompanyRegister company;
+        string siteName;
+        string siteAddressName;
     }
 
     struct CompanyAccount {
@@ -33,13 +38,9 @@ contract SecurityRegister is ERC721URIStorage {
         bool active;
     }
 
-    struct Register {
-        string siteName;
-        string securitySector;
-    }
-
     struct VerificationTask {
-        Register register;
+        CompanySite register;
+        uint _registerId;
         address verifier;
         string securityType;
         uint256 date;
@@ -54,7 +55,7 @@ contract SecurityRegister is ERC721URIStorage {
     }
 
     struct VerifierAccount {
-        address company;
+        address verifier;
         bool active;
     }
 
@@ -77,37 +78,53 @@ contract SecurityRegister is ERC721URIStorage {
         ApprovedWithReservation
     }
 
+
     Counters.Counter private currentTaskId;
+    uint private securitySectorLimit = 15;
 
-    // Mappings
-    // map a company address to a company struct.
-    mapping(address => Company) private companies;
-    // map a company address to a company account struct (delegation).
+    // Company
+    // @dev Map a company address to bool
+    mapping(address => bool) private companies;
+    // @dev Map a company address to a site name
+    mapping(address => mapping(string => CompanySite)) private companyRegisters;
+    // @dev map a company address to a company account struct (delegation).
     mapping(address => CompanyAccount) private companyAccounts;
-    // map a company address to a register struct.
-    mapping(address => mapping(uint256 => Register)) private registers;
-    // map a uint to a verification task struct.
-    mapping(uint256 => VerificationTask) private verificationTasks;
-    // map verifier address to a verifier struct.
-    mapping(address => Verifier) private verifiers;
-    // map a verifier address to verifier account (delegation).
-    mapping(address => VerifierAccount) private verifierAccounts;
-    // map a company address to a verifier address.
+    // @dev map a company address to a verifier address.
     mapping(address => address) private companyVerifiers;
+    // Verifier
+    // @dev map verifier address to a verifier struct.
+    mapping(address => Verifier) private verifiers;
+    // @dev map a verifier address to verifier account (delegation).
+    mapping(address => VerifierAccount) private verifierAccounts;
+    // Verification task
+    // @dev map a uint to a verification task struct.
+    mapping(uint256 => VerificationTask) private verificationTasks;
 
 
-    // @dev Event emits when a company has been created.
-    event CompanyCreated(address _addr, string _name, string _addressName, string _siret);
-    // @dev Event emits when a company added an account to delegate the approval status.
-    event CompanyAccountAdded(address _company, address _account);
-    // @dev Event emits when a company removed an account to delegate the approval status.
-    event CompanyAccountRemoved(address _company, address _account);
-    // @dev Event emits when a company added a verifier to his company.
-    event VerifierAddedToCompany(address _company, address _verifier);
+    // Company
     // @dev Event emits when a register has been created.
-    event RegisterCreated(address _addr, string _siteName, string _securitySector, uint256 registerId);
+    event RegisterCreated(
+        address _addr,
+        string _name,
+        string _addressName,
+        string _siret,
+        string _siteName,
+        string _siteAddressName
+    );
+    // @dev Event emits when a company updated an account to delegate the approval status.
+    event CompanyAccountUpdated(address _company, address _account, string _name, string _firstName, string _action);
+
+    // Verifier
     // @dev Event emits when a verifier has been been created.
     event VerifierCreated(address _verifier, string _name, string _addressName, string _siret, string _approvalNumber);
+    // @dev Event emits when a verifier updated an account to delegate the validate status.
+    event VerifierAccountUpdated(address _verifier, address _account, string _name, string _firstName, string _action);
+
+    // @dev Event emits when a company added a verifier to his company.
+    event VerifierAddedToCompany(address _company, address _verifier);
+
+
+    // Verification tasks
     // @dev Event emits when a verification task has been created.
     event VerificationTaskCreated(
         address _company,
@@ -115,7 +132,9 @@ contract SecurityRegister is ERC721URIStorage {
         uint256 _registerId,
         string _securityType,
         uint256 _taskId,
-        VerificationStatus _taskStatus
+        VerificationStatus _taskStatus,
+        string _siteName,
+        uint256 _timestamp
     );
     // @dev Event emits when a verification task has been validated by a verifier.
     event VerificationTaskValidated(address _verifier, uint256 _taskId, VerificationStatus _taskStatus);
@@ -127,7 +146,7 @@ contract SecurityRegister is ERC721URIStorage {
      * @notice A modifier to restrict actions only for company account.
      */
     modifier onlyCompany() {
-        require(bytes(companies[msg.sender].name).length > 0, "You're not a company!");
+        require(companies[msg.sender] == true, "You're not a company!");
         _;
     }
 
@@ -136,7 +155,8 @@ contract SecurityRegister is ERC721URIStorage {
      */
     modifier onlyCompanyAndAccount() {
         require(
-            isCompany(msg.sender) == true || isCompanyAccount(msg.sender) == true,
+            companies[msg.sender] == true ||
+            companyAccounts[msg.sender].active == true,
             "You're not a company or authorized account!");
         _;
     }
@@ -152,6 +172,18 @@ contract SecurityRegister is ERC721URIStorage {
 
 
     /**
+     * @notice A modifier to restrict actions for all verifiers account.
+     */
+    modifier onlyVerifierAndAccount() {
+        require(
+            bytes(verifiers[msg.sender].name).length > 0 ||
+            verifierAccounts[msg.sender].active == true,
+            "You're not a verifier or authorized account!");
+        _;
+    }
+
+
+    /**
      * @dev Initializes the contract by setting a 'base URI', a `name` and a `symbol'.
      */
     constructor() ERC721("SecurityRegister", "SR") {}
@@ -159,63 +191,109 @@ contract SecurityRegister is ERC721URIStorage {
     // external functions
 
     /**
-     * @notice Create a company name.
+     * @notice Create a security register per company site.
      * @param  _name The company name.
      * @param _addressName The company address.
      * @param _siret The company siret.
-     * Emit a {CompanyCreated} event.
+     * @param _siteName The company site name.
+     * emit a {RegisterCreated} event.
      */
-    function createCompany(
+    function createRegister(
         string calldata _name,
         string calldata _addressName,
-        string calldata _siret
+        string calldata _siret,
+        string calldata _siteName,
+        string calldata _siteAddressName
     )
         external
     {
         require(
-            keccak256(abi.encodePacked(_name)) != keccak256(abi.encodePacked(companies[msg.sender].name)),
-            "Company already exists!"
+            bytes(companyRegisters[msg.sender][_siteName].siteName).length == 0,
+            "Site already exists!"
         );
-        require(bytes(_siret).length > 0, "'siret' cannot be empty!");
+        require(bytes(_name).length > 0, "'_name' cannot be empty!");
+        require(bytes(_addressName).length > 0, "'_addressName' cannot be empty!");
+        require(bytes(_siret).length > 0, "'_siret' cannot be empty!");
+        require(bytes(_siteName).length > 0, "'_siteName' cannot be empty!");
+        require(bytes(_siteAddressName).length > 0, "'_siteAddressName' cannot be empty!");
 
-        companies[msg.sender] = Company(_name, _addressName, _siret, 0);
-        emit CompanyCreated(msg.sender, _name, _addressName, _siret);
+        // create a company site
+        companies[msg.sender] = true;
+        // Create the site
+        companyRegisters[msg.sender][_siteName] = CompanySite(
+            CompanyRegister(_name, _addressName, _siret),
+            _siteName,
+            _siteAddressName
+        );
+
+        emit RegisterCreated(msg.sender, _name, _addressName, _siret, _siteName, _siteAddressName);
     }
 
 
     /**
-     * @notice Add a company account to manage verification.
+     * @notice Update a company account to manage verification.
      * @param  _account The account address.
+     * @param  _action The action to perform [ add | remove ].
+     * @param  _name The account name.
+     * @param  _firstName The account firstname.
      * Only Company account is able to add another account.
      * Emit a {CompanyAccountAdded} event.
      */
-    function addCompanyAccount(
-        address _account
+    function updateCompanyAccount(
+        address _account,
+        string calldata _name,
+        string calldata _firstName,
+        string calldata _action
     )
         external
         onlyCompany
     {
-        companyAccounts[_account] = CompanyAccount(msg.sender, true);
+        require(
+            keccak256(abi.encodePacked(_action)) == keccak256(abi.encodePacked("add")) ||
+            keccak256(abi.encodePacked(_action)) == keccak256(abi.encodePacked("remove")),
+            "Invalid action provided!"
+        );
 
-        emit CompanyAccountAdded(msg.sender, _account);
+        if (keccak256(abi.encodePacked(_action)) == keccak256(abi.encodePacked("add")))
+            companyAccounts[_account] = CompanyAccount(msg.sender, true);
+        else
+            companyAccounts[_account] = CompanyAccount(msg.sender, false);
+
+        emit CompanyAccountUpdated(msg.sender, _account, _name, _firstName, _action);
     }
+
 
     /**
-     * @notice Remove a company account.
+     * @notice Add a verifier account to manage verification.
      * @param  _account The account address.
-     * Only Company account is able to remove an account.
-     * Emit a {CompanyAccountRemoved} event.
+     * @param  _action The action to perform [ add | remove].
+     * @param  _name The account name.
+     * @param  _firstName The account firstname.
+     * Only Verifier account is able to add another account.
+     * Emit a {VerifierAccountAdded} event.
      */
-    function removeCompanyAccount(
-        address _account
+    function updateVerifierAccount(
+        address _account,
+        string calldata _name,
+        string calldata _firstName,
+        string calldata _action
     )
         external
-        onlyCompany
+        onlyVerifier
     {
-        companyAccounts[_account] = CompanyAccount(msg.sender, false);
+        require(
+            keccak256(abi.encodePacked(_action)) == keccak256(abi.encodePacked("add")) ||
+            keccak256(abi.encodePacked(_action)) == keccak256(abi.encodePacked("remove")),
+            "Invalid action provided!"
+        );
+        if (keccak256(abi.encodePacked(_action)) == keccak256(abi.encodePacked("add")))
+            verifierAccounts[_account] = VerifierAccount(msg.sender, true);
+        else
+            verifierAccounts[_account] = VerifierAccount(msg.sender, false);
 
-        emit CompanyAccountRemoved(msg.sender, _account);
+        emit VerifierAccountUpdated(msg.sender, _account, _name, _firstName, _action);
     }
+
 
     /**
      * @notice Add a verifier to a company.
@@ -229,34 +307,12 @@ contract SecurityRegister is ERC721URIStorage {
         external
         onlyCompany
     {
+        require(bytes(verifiers[_verifier].name).length > 0, "Verifier does not exists!");
         require(companyVerifiers[msg.sender] != _verifier , "Verifier already exists for this company!");
 
         companyVerifiers[msg.sender] = _verifier;
 
         emit VerifierAddedToCompany(msg.sender, _verifier);
-    }
-
-
-    /**
-     * @notice Create a security register per site.
-     * @param _siteName The company site name.
-     * @param _securitySector The security register sector (e.g fire).
-     * emit a {RegisterCreated} event.
-     */
-    function createRegister(
-        string calldata _siteName,
-        string calldata _securitySector
-    )
-        external
-        onlyCompany
-    {
-        require(isSite(msg.sender, _siteName) == false, "Site already exists!" );
-
-        uint256 _registerId = companies[msg.sender].numberOfRegisters;
-        companies[msg.sender].numberOfRegisters++;
-        registers[msg.sender][_registerId] = Register(_siteName, _securitySector);
-
-        emit RegisterCreated(msg.sender, _siteName, _securitySector, _registerId);
     }
 
 
@@ -282,38 +338,70 @@ contract SecurityRegister is ERC721URIStorage {
         );
         require(bytes(_siret).length > 0, "'siret' cannot be empty!");
         require(bytes(_approvalNumber).length > 0, "'approval number' cannot be empty!");
-        require(isCompany(msg.sender) == false, "Unable to create a verifier as a company account!");
+        require(companies[msg.sender] == false, "A company already exists for this account!");
 
         verifiers[msg.sender] = Verifier(_name, _addressName, _siret, _approvalNumber);
 
         emit VerifierCreated(msg.sender, _name, _addressName, _siret, _approvalNumber);
     }
 
+    /**
+     * @notice Get the company account.
+     * @return The company address.
+     */
+    function getCompanyAccount() public onlyCompanyAndAccount view returns(address) {
+        if (companyAccounts[msg.sender].active == true)
+            return companyAccounts[msg.sender].company;
+        return msg.sender;
+    }
+
 
     /**
      * @notice Create a verification task in order to mint the NFT.
-     * @param _registerId The security register ID previously created.
+     * @param _siteName The company site name.
      * @param _securityType The security type e.g: extinguisher.
+     * @param _registerId The security register ID previously created.
      * emit a {VerificationCreated} event.
+     *
+     * @dev _registerId must be restrict to these indexes (see securitySectorLimit)
+     * 0 => 'Aeration',
+     * 1 => 'PressureEquipment',
+     * 2 => 'Elevator',
+     * 3 => 'Noise',
+     * 4 => 'Lighting',
+     * 5 => 'Electricity',
+     * 6 => 'Fire',
+     * 7 => 'Refrigerated',
+     * 8 => 'Thermal',
+     * 9 => 'Gate',
+     * 10 => 'IonizingRadiation',
+     * 11 => 'OpticalRadiation',
+     * 12 => 'ChemicalHazard',
+     * 13 => 'SignalingSystem',
+     * 14 => 'AirConditioningSystem'
      */
     function createVerificationTask(
-        uint256 _registerId,
-        string calldata _securityType
+        string calldata _siteName,
+        string calldata _securityType,
+        uint _registerId
     )
         external
         onlyCompanyAndAccount
     {
-        require(isVerifier(companyVerifiers[msg.sender]) == true, "Verifier does not exists!");
-        require(isRegister(msg.sender, _registerId) == true, "Security register ID does not exists!");
-        require(bytes(_securityType).length > 0, "'security type' cannot be empty!");
+        require(_registerId < securitySectorLimit, "Security register ID does not exists!");
+        require(companyVerifiers[getCompanyAccount()] != address(0) , "Verifier does not exists!");
+        require(bytes(_siteName).length > 0, "'_siteName type' cannot be empty!");
+        require(bytes(_securityType).length > 0, "'_securityType type' cannot be empty!");
 
         uint256 taskId = currentTaskId.current();
         currentTaskId.increment();
-        Register memory _register = registers[msg.sender][_registerId];
+        address _company = getCompanyAccount();
+        CompanySite memory _register = companyRegisters[_company][_siteName];
 
         verificationTasks[taskId] = VerificationTask(
             _register,
-            companyVerifiers[msg.sender],
+            _registerId,
+            companyVerifiers[_company],
             _securityType,
             block.timestamp,
             VerificationStatus.WaitForApproval
@@ -321,11 +409,13 @@ contract SecurityRegister is ERC721URIStorage {
 
         emit VerificationTaskCreated(
             msg.sender,
-            companyVerifiers[msg.sender],
+            companyVerifiers[_company],
             _registerId,
             _securityType,
             taskId,
-            VerificationStatus.WaitForApproval
+            VerificationStatus.WaitForApproval,
+            _siteName,
+            block.timestamp
         );
     }
 
@@ -339,7 +429,7 @@ contract SecurityRegister is ERC721URIStorage {
         uint256 _taskId
     )
         external
-        onlyVerifier
+        onlyVerifierAndAccount
     {
         require(verificationTasks[_taskId].verifier == msg.sender, "There is no verification task created!");
         require(
@@ -368,7 +458,7 @@ contract SecurityRegister is ERC721URIStorage {
         string calldata _action
     )
         external
-        onlyCompany
+        onlyCompanyAndAccount
     {
         require(bytes(verificationTasks[_taskId].securityType).length > 0, "There is no verification task created!");
         require(
@@ -426,7 +516,7 @@ contract SecurityRegister is ERC721URIStorage {
      * @return true or false.
      */
     function isCompany(address _company) public view returns (bool) {
-        return bytes(companies[_company].name).length > 0;
+        return companies[_company] == true;
     }
 
     /**
@@ -448,24 +538,11 @@ contract SecurityRegister is ERC721URIStorage {
 
 
     /**
-     * @notice Check that a security register has been created.
+     * @notice Check if a verifier account has been created.
      * @return true or false.
      */
-    function isRegister(address _company, uint256 _registerId) public view returns (bool) {
-        return bytes(registers[_company][_registerId].siteName).length > 0;
-    }
-
-
-    /**
-     * @notice Check that a site has been created.
-     * @return true or false.
-     */
-    function isSite(address _company, string calldata _siteName) public view returns (bool) {
-        for(uint256 i = 0; i < companies[_company].numberOfRegisters; ++i ) {
-            if (keccak256(abi.encodePacked(registers[_company][i].siteName)) == keccak256(abi.encodePacked(_siteName)))
-                return true;
-        }
-        return false;
+    function isVerifierAccount(address _account) public view returns (bool) {
+        return verifierAccounts[_account].active == true;
     }
 
 

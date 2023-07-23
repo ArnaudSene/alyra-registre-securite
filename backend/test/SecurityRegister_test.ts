@@ -2,6 +2,7 @@ import { expect } from "chai"
 import { ethers } from "hardhat"
 import { SecurityRegister } from "../typechain-types"
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers"
+import {parseUnits} from "ethers";
 
 
 describe( "SecurityRegister", () => {
@@ -20,149 +21,7 @@ describe( "SecurityRegister", () => {
         return { securityRegister, owner, acc1, acc2, acc3, acc4, acc5 }
     }
 
-    context("Create a company", async () => {
-        let _securityRegister: SecurityRegister
-        let _company1: HardhatEthersSigner
-        let _company2: HardhatEthersSigner
-
-        beforeEach(async () => {
-
-            const {
-                securityRegister,
-                acc1,
-                acc2,
-            } = await deployDefaultContract()
-
-            _securityRegister = securityRegister
-            _company1 = acc1
-            _company2 = acc2
-        })
-
-        // test createCompany
-        it("prevent from creating the same company name", async () => {
-            await _securityRegister.connect(_company1).createCompany("fakeName", "fakeAddress", "fakeSiret")
-            await expect(_securityRegister.connect(_company1)
-                .createCompany("fakeName", "fakeAddress", "fakeSiret"))
-                .to.be.revertedWith("Company already exists!")
-        })
-
-        it("prevent from not providing a siret", async () => {
-            await expect(_securityRegister.connect(_company1).createCompany("fakeName", "fakeAddress", ""))
-                .to.be.revertedWith("'siret' cannot be empty!")
-        })
-
-        it("should emit an event at company creation", async () => {
-            await expect(_securityRegister.connect(_company1)
-                .createCompany("fakeName", "fakeAddress", "fakeSiret"))
-                .to.emit(_securityRegister, "CompanyCreated")
-                .withArgs(_company1.address, "fakeName", "fakeAddress", "fakeSiret")
-        })
-
-        // test isCompany
-        it("should get false if no company has been created", async () => {
-            expect(await _securityRegister.isCompany(_company1)).to.be.equal(false)
-        })
-
-        it("should get true if a company has been created", async () => {
-            await _securityRegister.connect(_company1).createCompany("fakeName", "fakeAddress", "fakeSiret")
-            expect(await _securityRegister.isCompany(_company1)).to.be.equal(true)
-        })
-    })
-
-    context("Manage company account and verifier", async () => {
-        let _securityRegister: SecurityRegister
-        let _company: HardhatEthersSigner
-        let _account: HardhatEthersSigner
-        let _account2: HardhatEthersSigner
-        let _verifier: HardhatEthersSigner
-
-        beforeEach(async () => {
-
-            const {
-                securityRegister,
-                acc1,
-                acc2,
-                acc3,
-                acc4,
-            } = await deployDefaultContract()
-
-            _securityRegister = securityRegister
-            _company = acc1
-            _account = acc2
-            _verifier = acc3
-            _account2 = acc4
-        })
-
-        // test addCompanyAccount
-        it("prevent from adding an account if sender not the company owner", async () => {
-            await expect(_securityRegister.connect(_company).addCompanyAccount(_account))
-                .to.be.revertedWith("You're not a company!")
-        })
-
-        it("should add an account and emit an event {CompanyAccountAdded}", async () => {
-            await _securityRegister.connect(_company).createCompany("fakeName", "fakeAddress", "fakeSiret")
-
-            await expect(_securityRegister.connect(_company).addCompanyAccount(_account))
-                .to.emit(_securityRegister, "CompanyAccountAdded")
-                .withArgs(_company.address, _account.address)
-        })
-
-        // test isCompanyAccount
-        it("should get false if no account company has been added", async () => {
-            await _securityRegister.connect(_company).createCompany("fakeName", "fakeAddress", "fakeSiret")
-
-            expect(await _securityRegister.isCompanyAccount(_account)).to.be.equal(false)
-        })
-
-        it("should get true if no account company has been added", async () => {
-            await _securityRegister.connect(_company).createCompany("fakeName", "fakeAddress", "fakeSiret")
-            await _securityRegister.connect(_company).addCompanyAccount(_account)
-            await _securityRegister.connect(_company).addCompanyAccount(_account2)
-
-            expect(await _securityRegister.isCompanyAccount(_account)).to.be.equal(true)
-            expect(await _securityRegister.isCompanyAccount(_account2)).to.be.equal(true)
-        })
-
-        // removeCompanyAccount
-        it("prevent from removing an account if sender not the company owner", async () => {
-            await expect(_securityRegister.connect(_company).removeCompanyAccount(_account))
-                .to.be.revertedWith("You're not a company!")
-        })
-
-        it("should remove an account and emit an event {CompanyAccountRemoved}", async () => {
-            await _securityRegister.connect(_company).createCompany("fakeName", "fakeAddress", "fakeSiret")
-            await _securityRegister.connect(_company).addCompanyAccount(_account)
-            expect(await _securityRegister.isCompanyAccount(_account)).to.be.equal(true)
-
-            await expect(_securityRegister.connect(_company).removeCompanyAccount(_account))
-                .to.emit(_securityRegister, "CompanyAccountRemoved")
-                .withArgs(_company.address, _account.address)
-            expect(await _securityRegister.isCompanyAccount(_account)).to.be.equal(false)
-        })
-
-        // test addVerifierToCompany
-        it("prevent from adding a verifier to a company if sender not a company", async () => {
-            await expect(_securityRegister.connect(_account).addVerifierToCompany(_verifier))
-                .to.revertedWith("You're not a company!")
-        })
-
-        it("prevent from adding the verifier twice", async () => {
-            await _securityRegister.connect(_company).createCompany("fakeName", "fakeAddress", "fakeSiret")
-            await _securityRegister.connect(_company).addVerifierToCompany(_verifier)
-            await expect(_securityRegister.connect(_company).addVerifierToCompany(_verifier))
-                .to.be.revertedWith("Verifier already exists for this company!")
-        })
-
-        it("should add a verifier to a company and emit an event {VerifierAddedToCompany}",
-            async () => {
-            await _securityRegister.connect(_company).createCompany("fakeName", "fakeAddress", "fakeSiret")
-            await expect(_securityRegister.connect(_company).addVerifierToCompany(_verifier))
-                .to.emit(_securityRegister, "VerifierAddedToCompany")
-                .withArgs(_company.address, _verifier.address)
-        })
-    })
-
-    context("Company security register per site", async () => {
+    context("Company and security register", async () => {
         let _securityRegister: SecurityRegister
         let _company1: HardhatEthersSigner
         let _company2: HardhatEthersSigner
@@ -187,91 +46,235 @@ describe( "SecurityRegister", () => {
         })
 
         // test createRegister
-        it("prevent from adding a site if sender not a company", async () => {
-            await expect(_securityRegister.connect(_other).createRegister("fakeSite", "fakeSecuritySector"))
-                .to.be.revertedWith("You're not a company!")
-        })
-
+        // Failed
         it("prevent from adding the site twice", async () => {
-            await _securityRegister.connect(_company1).createCompany("fakeName", "fakeAddress", "fakeSiret")
-            await _securityRegister.connect(_company1).createRegister("fakeSite", "fakeSecuritySector")
+            await _securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeSiteAddress")
 
-            await expect(_securityRegister.connect(_company1).createRegister("fakeSite", "fakeSecuritySector"))
+            await expect(_securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeSiteAddress"))
                 .to.be.revertedWith("Site already exists!")
         })
 
-        it("should add a site and emit a {RegisterCreated} event", async () => {
-            await _securityRegister.connect(_company1).createCompany("fakeName", "fakeAddress", "fakeSiret")
-
-            await expect(_securityRegister.connect(_company1).createRegister("fakeSite", "fakeSecuritySector"))
-                .to.emit(_securityRegister, "RegisterCreated")
-                .withArgs(_company1.address, "fakeSite", "fakeSecuritySector", BigInt("0"))
+        it("prevent from create company with an empty name", async () => {
+            await expect(_securityRegister.connect(_other)
+                .createRegister("", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeSiteAddress"))
+                .to.be.revertedWith("'_name' cannot be empty!")
         })
 
-        it("should add more than one site per company and emit a {RegisterCreated} event", async () => {
-            await _securityRegister.connect(_company1).createCompany("fakeName", "fakeAddress", "fakeSiret")
-
-            await expect(_securityRegister.connect(_company1).createRegister("fakeSite1", "fakeSecuritySector1"))
-                .to.emit(_securityRegister, "RegisterCreated")
-                .withArgs(_company1.address, "fakeSite1", "fakeSecuritySector1", BigInt("0"))
-
-            await expect(_securityRegister.connect(_company1).createRegister("fakeSite2", "fakeSecuritySector2"))
-                .to.emit(_securityRegister, "RegisterCreated")
-                .withArgs(_company1.address, "fakeSite2", "fakeSecuritySector2", BigInt("1"))
+        it("prevent from create company with an empty address", async () => {
+            await expect(_securityRegister.connect(_other)
+                .createRegister("fakeName", "", "fakeSiret", "fakeSiteName", "fakeSiteAddress"))
+                .to.be.revertedWith("'_addressName' cannot be empty!")
         })
 
-        it("should add more than one site for 3 companies and emit a {RegisterCreated} event", async () => {
-            await _securityRegister.connect(_company1).createCompany("fakeName1", "fakeAddress1", "fakeSiret1")
-            await _securityRegister.connect(_company2).createCompany("fakeName2", "fakeAddress2", "fakeSiret2")
-            await _securityRegister.connect(_company3).createCompany("fakeName3", "fakeAddress3", "fakeSiret3")
+        it("prevent from create company with an empty siret", async () => {
+            await expect(_securityRegister.connect(_other)
+                .createRegister("fakeName", "fakeAddress", "", "fakeSiteName", "fakeSiteAddress"))
+                .to.be.revertedWith("'_siret' cannot be empty!")
+        })
 
+        it("prevent from create company with an empty site name", async () => {
+            await expect(_securityRegister.connect(_other)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "", "fakeSiteAddress"))
+                .to.be.revertedWith("'_siteName' cannot be empty!")
+        })
+
+        it("prevent from create company with an empty site name", async () => {
+            await expect(_securityRegister.connect(_other)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", ""))
+                .to.be.revertedWith("'_siteAddressName' cannot be empty!")
+        })
+
+        // OK
+        it("should add a company and emit a {RegisterCreated} event", async () => {
+            await expect(_securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeSiteAddress"))
+                .to.emit(_securityRegister, "RegisterCreated")
+                .withArgs(_company1.address, "fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeSiteAddress")
+        })
+
+        it("should add a second site to company and emit a {RegisterCreated} event", async () => {
+            // 1st site
+            await _securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeSiteAddress")
+            // 2nd site
+            await expect(_securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName2", "fakeSiteAddress"))
+                .to.emit(_securityRegister, "RegisterCreated")
+                .withArgs(_company1.address, "fakeName", "fakeAddress", "fakeSiret", "fakeSiteName2", "fakeSiteAddress")
+        })
+
+        it("should add 2 companies, 2 sites per company and emit a {RegisterCreated} event", async () => {
             // company 1
-            // registerId = 0
-            await expect(_securityRegister.connect(_company1).createRegister("fakeSite1", "fakeSecuritySector1"))
+            // site = 1
+            await expect(_securityRegister.connect(_company1)
+                .createRegister("fakeName1", "fakeAddress", "fakeSiret", "fakeSiteName1", "fakeSiteAddress"))
                 .to.emit(_securityRegister, "RegisterCreated")
-                .withArgs(_company1.address, "fakeSite1", "fakeSecuritySector1", BigInt("0"))
-            // registerId = 1
-            await expect(_securityRegister.connect(_company1).createRegister("fakeSite2", "fakeSecuritySector2"))
+                .withArgs(_company1.address, "fakeName1", "fakeAddress", "fakeSiret", "fakeSiteName1", "fakeSiteAddress")
+            // site = 2
+            await expect(_securityRegister.connect(_company1)
+                .createRegister("fakeName1", "fakeAddress", "fakeSiret", "fakeSiteName2", "fakeSiteAddress"))
                 .to.emit(_securityRegister, "RegisterCreated")
-                .withArgs(_company1.address, "fakeSite2", "fakeSecuritySector2", BigInt("1"))
+                .withArgs(_company1.address, "fakeName1", "fakeAddress", "fakeSiret", "fakeSiteName2", "fakeSiteAddress")
 
             // company 2
-            // registerId = 0
-            await expect(_securityRegister.connect(_company2).createRegister("fakeSite1", "fakeSecuritySector1"))
+            // site = 1
+            await expect(_securityRegister.connect(_company2)
+                .createRegister("fakeName1", "fakeAddress", "fakeSiret", "fakeSiteName1", "fakeSiteAddress"))
                 .to.emit(_securityRegister, "RegisterCreated")
-                .withArgs(_company2.address, "fakeSite1", "fakeSecuritySector1", BigInt("0"))
-            // registerId = 1
-            await expect(_securityRegister.connect(_company2).createRegister("fakeSite2", "fakeSecuritySector2"))
+                .withArgs(_company2.address, "fakeName1", "fakeAddress", "fakeSiret", "fakeSiteName1", "fakeSiteAddress")
+            // site = 2
+            await expect(_securityRegister.connect(_company2)
+                .createRegister("fakeName1", "fakeAddress", "fakeSiret", "fakeSiteName2", "fakeSiteAddress"))
                 .to.emit(_securityRegister, "RegisterCreated")
-                .withArgs(_company2.address, "fakeSite2", "fakeSecuritySector2", BigInt("1"))
-
-            // company 3
-            // registerId = 0
-            await expect(_securityRegister.connect(_company3).createRegister("fakeSite1", "fakeSecuritySector1"))
-                .to.emit(_securityRegister, "RegisterCreated")
-                .withArgs(_company3.address, "fakeSite1", "fakeSecuritySector1", BigInt("0"))
-            // registerId = 1
-            await expect(_securityRegister.connect(_company3).createRegister("fakeSite2", "fakeSecuritySector2"))
-                .to.emit(_securityRegister, "RegisterCreated")
-                .withArgs(_company3.address, "fakeSite2", "fakeSecuritySector2", BigInt("1"))
+                .withArgs(_company2.address, "fakeName1", "fakeAddress", "fakeSiret", "fakeSiteName2", "fakeSiteAddress")
         })
 
-        // test isSite
-        it("should return false if no site has been created", async () => {
-            await _securityRegister.connect(_company1).createCompany("fakeName", "fakeAddress", "fakeSiret")
+    })
 
-            expect(await _securityRegister.isSite(_company1, "fakeSite")).to.be.equal(false)
+    context("Company and verifier accounts", async () => {
+        let _securityRegister: SecurityRegister
+        let _company: HardhatEthersSigner
+        let _account: HardhatEthersSigner
+        let _account2: HardhatEthersSigner
+        let _verifier: HardhatEthersSigner
+
+        beforeEach(async () => {
+
+            const {
+                securityRegister,
+                acc1,
+                acc2,
+                acc3,
+                acc4,
+            } = await deployDefaultContract()
+
+            _securityRegister = securityRegister
+            _company = acc1
+            _account = acc2
+            _verifier = acc3
+            _account2 = acc4
         })
 
-        it("should return true if a site has been created", async () => {
-            await _securityRegister.connect(_company1).createCompany("fakeName", "fakeAddress", "fakeSiret")
-            await _securityRegister.connect(_company1).createRegister("fakeSite", "fakeSecuritySector")
+        // test updateCompanyAccount
+        it("prevent from adding an account if sender not the company owner", async () => {
+            await expect(_securityRegister.connect(_company)
+                .updateCompanyAccount(_account, "fakeName", "fakeFirstName", "add"))
+                .to.be.revertedWith("You're not a company!")
+        })
 
-            expect(await _securityRegister.isSite(_company1, "fakeSite")).to.be.equal(true)
+        it("prevent from providing an invalid action other than 'add' or 'remove'", async () => {
+            await _securityRegister.connect(_company)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeSiteAddress")
+
+            await expect(_securityRegister.connect(_company)
+                .updateCompanyAccount(_account, "fakeName", "fakeFirstName", "badAction"))
+                .to.be.revertedWith("Invalid action provided!")
+        })
+
+        it("should add an account and emit an event {CompanyAccountUpdated}", async () => {
+            await _securityRegister.connect(_company)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeSiteAddress")
+
+            await expect(_securityRegister.connect(_company)
+                .updateCompanyAccount(_account, "fakeName", "fakeFirstName", "add"))
+                .to.emit(_securityRegister, "CompanyAccountUpdated")
+                .withArgs(_company.address, _account.address, "fakeName", "fakeFirstName", "add")
+        })
+
+        it("should remove an account and emit an event {CompanyAccountUpdated}", async () => {
+            await _securityRegister.connect(_company)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeSiteAddress")
+
+            await expect(_securityRegister.connect(_company)
+                .updateCompanyAccount(_account, "fakeName", "fakeFirstName", "remove"))
+                .to.emit(_securityRegister, "CompanyAccountUpdated")
+                .withArgs(_company.address, _account.address, "fakeName", "fakeFirstName", "remove")
+        })
+
+
+        // test updateVerifierAccount
+        it("prevent from updating an account if sender not the verifier owner", async () => {
+            await expect(_securityRegister.connect(_company)
+                .updateVerifierAccount(_account, "fakeName", "fakeFirstName", "add"))
+                .to.be.revertedWith("You're not a verifier!")
+        })
+
+        it("prevent from updating an account with an invalid action provided", async () => {
+            await _securityRegister.connect(_verifier)
+                .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApproval")
+
+            await expect(_securityRegister.connect(_verifier)
+                .updateVerifierAccount(_account, "fakeName", "fakeFirstName", "badAction"))
+                .to.be.revertedWith("Invalid action provided!")
+        })
+
+        it("should add an account and emit an event {VerifierAccountUpdated}", async () => {
+            await _securityRegister.connect(_verifier)
+                .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApproval")
+
+            await expect(_securityRegister.connect(_verifier)
+                .updateVerifierAccount(_account, "fakeName", "fakeFirstName", "add"))
+                .to.emit(_securityRegister, "VerifierAccountUpdated")
+                .withArgs(_verifier.address, _account.address, "fakeName", "fakeFirstName", "add")
+        })
+
+        it("should remove an account and emit an event {VerifierAccountUpdated}", async () => {
+            await _securityRegister.connect(_verifier)
+                .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApproval")
+
+            await expect(_securityRegister.connect(_verifier)
+                .updateVerifierAccount(_account, "fakeName", "fakeFirstName", "remove"))
+                .to.emit(_securityRegister, "VerifierAccountUpdated")
+                .withArgs(_verifier.address, _account.address, "fakeName", "fakeFirstName", "remove")
+        })
+
+
+        // test addVerifierToCompany
+        it("prevent from adding a verifier to a company if sender not a company", async () => {
+            await expect(_securityRegister.connect(_account).addVerifierToCompany(_verifier))
+                .to.revertedWith("You're not a company!")
+        })
+
+        it("prevent from adding a verifier to a company that does not exist", async () => {
+            // Create a company
+            await _securityRegister.connect(_company)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeSiteAddress")
+
+            await expect(_securityRegister.connect(_company).addVerifierToCompany(_verifier))
+                .to.revertedWith("Verifier does not exists!")
+        })
+
+        it("prevent from adding the verifier twice", async () => {
+            // Create a company
+            await _securityRegister.connect(_company)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeSiteAddress")
+            // Create a verifier
+            await expect(_securityRegister.connect(_verifier)
+                .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber"))
+            // Add a verifier to a company
+            await _securityRegister.connect(_company).addVerifierToCompany(_verifier)
+
+            await expect(_securityRegister.connect(_company).addVerifierToCompany(_verifier))
+                .to.be.revertedWith("Verifier already exists for this company!")
+        })
+
+        it("should add a verifier to a company and emit an event {VerifierAddedToCompany}", async () => {
+            // Create a company
+            await _securityRegister.connect(_company)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeSiteAddress")
+            // Create a verifier
+            await expect(_securityRegister.connect(_verifier)
+                .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber"))
+
+            await expect(_securityRegister.connect(_company).addVerifierToCompany(_verifier))
+                .to.emit(_securityRegister, "VerifierAddedToCompany")
+                .withArgs(_company.address, _verifier.address)
         })
     })
 
-    context("Create a verifier", async () => {
+    context("Verifier", async () => {
         let _securityRegister: SecurityRegister
         let _verifier1: HardhatEthersSigner
         let _company1: HardhatEthersSigner
@@ -311,10 +314,12 @@ describe( "SecurityRegister", () => {
         })
 
         it("prevent from creating a verifier as a company", async () => {
-            await _securityRegister.connect(_company1).createCompany("fakeName", "fakeAddress", "fakeSiret")
+            await _securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeSiteAddress")
+
             await expect(_securityRegister.connect(_company1).createVerifier(
                 "fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber"))
-                .to.be.revertedWith("Unable to create a verifier as a company account!")
+                .to.be.revertedWith("A company already exists for this account!")
         })
 
         it("should emit an event at verifier creation", async () => {
@@ -323,21 +328,9 @@ describe( "SecurityRegister", () => {
                 .to.emit(_securityRegister, "VerifierCreated")
                 .withArgs(_verifier1.address, "fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber")
         })
-
-        // test isVerifier
-        it("should get false if no verifier has been created", async () => {
-            expect(await _securityRegister.isVerifier(_verifier1.address)).to.be.equal(false)
-        })
-
-        it("should get true if a verifier has been created", async () => {
-            await _securityRegister.connect(_verifier1).createVerifier(
-                "fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber")
-
-            expect(await _securityRegister.isVerifier(_verifier1.address)).to.be.equal(true)
-        })
     })
 
-    context("Init a verification task", async () => {
+    context("Verification task", async () => {
         let _securityRegister: SecurityRegister
         let _company1: HardhatEthersSigner
         let _verifier1: HardhatEthersSigner
@@ -358,59 +351,163 @@ describe( "SecurityRegister", () => {
             _delegatedAccount1 = acc3
         })
 
-        // Test createVerificationTask
-        it("prevent from creating a verification task without a company", async () => {
-            await expect(_securityRegister.connect(_company1).createVerificationTask(0, "fakeSecurityType"))
+        // test getCompanyAccount
+        it("prevent from retrieving a company address with a unauthorized account", async () => {
+            await expect(_securityRegister.connect(_verifier1).getCompanyAccount())
                 .to.be.revertedWith("You're not a company or authorized account!")
         })
 
-        it("prevent from creating a verification task without a verifier", async () => {
-            await _securityRegister.connect(_company1).createCompany("fakeName", "fakeAddress", "fakeSiret")
-            await expect(_securityRegister.connect(_company1).createVerificationTask(0, "fakeSecurityType"))
-                .to.be.revertedWith("Verifier does not exists!")
+        it("should retrieve a company address by using a delegated account", async () => {
+            // Add delegated account
+            await _securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeSiteAddress")
+
+            await _securityRegister.connect(_company1)
+                .updateCompanyAccount(_delegatedAccount1, "fakeName", "fakeFirstName", "add")
+
+            expect(await _securityRegister.connect(_delegatedAccount1).getCompanyAccount())
+                .to.be.equal(_company1.address)
         })
 
-        it("prevent from creating a verification task with no register created (registerId)",async () => {
-            await _securityRegister.connect(_company1).createCompany("fakeName", "fakeAddress", "fakeSiret")
-            await _securityRegister.connect(_verifier1)
-                .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber")
-            await _securityRegister.connect(_company1).addVerifierToCompany(_verifier1)
+        it("should retrieve a company address by using the company account", async () => {
+            // Add delegated account
+            await _securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeSiteAddress")
 
-            await expect(_securityRegister.connect(_company1).createVerificationTask(0, "fakeSecurityType"))
+            expect(await _securityRegister.connect(_company1).getCompanyAccount())
+                .to.be.equal(_company1.address)
+        })
+
+        // Test createVerificationTask
+        it("prevent from creating a verification task without a company", async () => {
+            await expect(_securityRegister.connect(_company1)
+                .createVerificationTask("fakeSiteName", "fakeSecurityType", 0))
+                .to.be.revertedWith("You're not a company or authorized account!")
+        })
+
+        it("prevent from creating a verification task with a invalid registerId > 15", async () => {
+            // Create a register by a company
+            await _securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeSiteAddress")
+
+            await expect(_securityRegister.connect(_company1)
+                .createVerificationTask("fakeSiteName", "fakeSecurityType", 16))
                 .to.be.revertedWith("Security register ID does not exists!")
         })
 
-        it("prevent from creating a verification task with securityType empty", async () => {
-            await _securityRegister.connect(_company1).createCompany("fakeName", "fakeAddress", "fakeSiret")
-            await _securityRegister.connect(_verifier1)
-                .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber")
-            await _securityRegister.connect(_company1).addVerifierToCompany(_verifier1)
-            await _securityRegister.connect(_company1).createRegister("fakeSiteName", "fakeSecuritySector")
+        it("prevent from creating a verification task by company without a verifier", async () => {
+            await _securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeSiteAddress")
 
-            await expect(_securityRegister.connect(_company1).createVerificationTask(0, ""))
-                .to.be.revertedWith("'security type' cannot be empty!")
+            await expect(_securityRegister.connect(_company1)
+                .createVerificationTask("fakeSiteName", "fakeSecurityType", 0))
+                .to.be.revertedWith("Verifier does not exists!")
         })
 
-        it("should create a verification task and emit a {VerificationTaskCreated} event",async () => {
-            await _securityRegister.connect(_company1).createCompany("fakeName", "fakeAddress", "fakeSiret")
+        it("prevent from creating a verification task with siteName empty", async () => {
+            // Create a  register
+            await _securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeSiteAddress")
+            // Add verifier
             await _securityRegister.connect(_verifier1)
                 .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber")
             await _securityRegister.connect(_company1).addVerifierToCompany(_verifier1)
-            await _securityRegister.connect(_company1).createRegister("fakeSiteName", "fakeSecuritySector")
 
-            await expect(_securityRegister.connect(_company1).createVerificationTask(0, "fakeSecurityType"))
-                .to.emit(_securityRegister, "VerificationTaskCreated")
-                .withArgs(_company1.address, _verifier1.address, 0, "fakeSecurityType", 0, 0)
+            await expect(_securityRegister.connect(_company1).createVerificationTask("", "fakeSecurityType", 0))
+                .to.be.revertedWith("'_siteName type' cannot be empty!")
+        })
+
+        it("prevent from creating a verification task with securityType empty", async () => {
+            // Create a  register
+            await _securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeSiteAddress")
+
+            // Add verifier
+            await _securityRegister.connect(_verifier1)
+                .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber")
+            await _securityRegister.connect(_company1).addVerifierToCompany(_verifier1)
+
+            await expect(_securityRegister.connect(_company1).createVerificationTask("fakeSiteName", "", 0))
+                .to.be.revertedWith("'_securityType type' cannot be empty!")
+        })
+
+
+        // ok
+        it("should create a verification task by company account and emit a {VerificationTaskCreated} event",async () => {
+            // Create a  register
+            await _securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeSiteAddress")
+
+            // Add verifier
+            await _securityRegister.connect(_verifier1)
+                .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber")
+            await _securityRegister.connect(_company1).addVerifierToCompany(_verifier1)
+
+            await _securityRegister.connect(_company1)
+                .createVerificationTask("fakeSiteName", "fakeSecurityType", 0)
+            // Get events
+            const events = await _securityRegister.queryFilter("VerificationTaskCreated");
+            const eventData = events[0].args;
+
+            // 1689978440 timestamp at this moment
+
+            expect(eventData._company).to.equal(_company1.address);
+            expect(eventData._verifier).to.equal(_verifier1.address);
+            expect(eventData._registerId).to.equal(0);
+            expect(eventData._securityType).to.equal("fakeSecurityType");
+            expect(eventData._taskId).to.equal(0);
+            expect(eventData._taskStatus).to.equal(0);
+            expect(eventData._siteName).to.equal("fakeSiteName");
+            expect(eventData._timestamp).to.greaterThan(1689978440n);
+        })
+
+        it("should create a verification task by delegated company account and emit a {VerificationTaskCreated} event",async () => {
+            // Create a  register
+            await _securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeSiteAddress")
+
+            // Create verifier
+            await _securityRegister.connect(_verifier1)
+                .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber")
+
+            // Add delegated account
+            await _securityRegister.connect(_company1)
+                .updateCompanyAccount(_delegatedAccount1, "fakeName", "fakeFirstName", "add")
+
+            // Assign a verifier to a company
+            await _securityRegister.connect(_company1).addVerifierToCompany(_verifier1)
+
+            await _securityRegister.connect(_delegatedAccount1)
+                .createVerificationTask("fakeSiteName", "fakeSecurityType", 0)
+            // Get events
+            const events = await _securityRegister.queryFilter("VerificationTaskCreated");
+            const eventData = events[0].args;
+
+            // 1689978440 timestamp at this moment
+
+            expect(eventData._company).to.equal(_delegatedAccount1.address);
+            expect(eventData._verifier).to.equal(_verifier1.address);
+            expect(eventData._registerId).to.equal(0);
+            expect(eventData._securityType).to.equal("fakeSecurityType");
+            expect(eventData._taskId).to.equal(0);
+            expect(eventData._taskStatus).to.equal(0);
+            expect(eventData._siteName).to.equal("fakeSiteName");
+            expect(eventData._timestamp).to.greaterThan(1689978440n);
         })
 
         // test getVerificationTaskStatus
         it("should get the task status => 0",async () => {
-            await _securityRegister.connect(_company1).createCompany("fakeName", "fakeAddress", "fakeSiret")
+            // Create a  register
+            await _securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeSiteAddress")
+
+            // Add verifier
             await _securityRegister.connect(_verifier1)
                 .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber")
             await _securityRegister.connect(_company1).addVerifierToCompany(_verifier1)
-            await _securityRegister.connect(_company1).createRegister("fakeSiteName", "fakeSecuritySector")
-            await _securityRegister.connect(_company1).createVerificationTask(0, "fakeSecurityType")
+
+            // Create a verification task
+            await _securityRegister.connect(_company1).createVerificationTask("fakeSiteName", "fakeSecurityType", 0)
 
             expect(await _securityRegister.getVerificationTaskStatus(0)).to.be.equal(BigInt("0"))
         })
@@ -419,30 +516,6 @@ describe( "SecurityRegister", () => {
             expect(await _securityRegister.getVerificationTaskStatus(999))
                 .to.be.revertedWith("taskID does not exist!")
         })
-
-        // isRegister
-        it("should get false if no register has been created",async () => {
-            await _securityRegister.connect(_company1).createCompany("fakeName", "fakeAddress", "fakeSiret")
-            await _securityRegister.connect(_verifier1)
-                .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber")
-            await _securityRegister.connect(_company1).addVerifierToCompany(_verifier1)
-
-            expect(await _securityRegister.isRegister(_company1, 0)).to.be.equal(false)
-        })
-
-        it("should get true if a register has been created",async () => {
-            await _securityRegister.connect(_company1).createCompany("fakeName", "fakeAddress", "fakeSiret")
-            await _securityRegister.connect(_verifier1)
-                .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber")
-            await _securityRegister.connect(_company1).addVerifierToCompany(_verifier1)
-            // create 2 registers, with registerId 0 and 1
-            await _securityRegister.connect(_company1).createRegister("fakeSiteName1", "fakeSecuritySector")
-            await _securityRegister.connect(_company1).createRegister("fakeSiteName2", "fakeSecuritySector")
-
-            expect(await _securityRegister.isRegister(_company1, 0)).to.be.equal(true)
-            expect(await _securityRegister.isRegister(_company1, 1)).to.be.equal(true)
-        })
-
     })
 
     context("Validate a verification task by a verifier", async () => {
@@ -466,24 +539,31 @@ describe( "SecurityRegister", () => {
         // test validateVerificationTask
         it("prevent from updating a verification task as a non verifier", async () => {
             await expect(_securityRegister.connect(_verifier1).validateVerificationTask(0))
-                .to.be.revertedWith("You're not a verifier!")
+                .to.be.revertedWith("You're not a verifier or authorized account!")
         })
 
         it("prevent from updating a verification task with no task created", async () => {
+            // Create a verifier
             await _securityRegister.connect(_verifier1)
                 .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber")
+
             await expect(_securityRegister.connect(_verifier1).validateVerificationTask(0))
                 .to.be.revertedWith("There is no verification task created!")
         })
 
         it("prevent from updating a verification task while status is rejected", async () => {
-            await _securityRegister.connect(_company1).createCompany("fakeName", "fakeAddress", "fakeSiret")
+            // Create a register
+            await _securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeSiteAddress")
+            // Create a verifier
             await _securityRegister.connect(_verifier1)
                 .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber")
             await _securityRegister.connect(_company1).addVerifierToCompany(_verifier1)
-            await _securityRegister.connect(_company1).createRegister("fakeSiteName", "fakeSecuritySector")
-            await _securityRegister.connect(_company1).createVerificationTask(0, "fakeSecurityType")
+            // Create a verification task
+            await _securityRegister.connect(_company1).createVerificationTask("fakeSiteName", "fakeSecurityType", 0)
+            // Validate the verification task by the verifier
             await _securityRegister.connect(_verifier1).validateVerificationTask(0)
+            // Reject the verification by the company
             await _securityRegister.connect(_company1).updateVerificationTask(0, "reject")
 
             await expect(_securityRegister.connect(_verifier1).validateVerificationTask(0))
@@ -491,13 +571,18 @@ describe( "SecurityRegister", () => {
         })
 
         it("prevent from updating a verification task while status is approved", async () => {
-            await _securityRegister.connect(_company1).createCompany("fakeName", "fakeAddress", "fakeSiret")
+            // Create a register
+            await _securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeSiteAddress")
+            // Create a verifier
             await _securityRegister.connect(_verifier1)
                 .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber")
             await _securityRegister.connect(_company1).addVerifierToCompany(_verifier1)
-            await _securityRegister.connect(_company1).createRegister("fakeSiteName", "fakeSecuritySector")
-            await _securityRegister.connect(_company1).createVerificationTask(0, "fakeSecurityType")
+            // Create a verification task
+            await _securityRegister.connect(_company1).createVerificationTask("fakeSiteName", "fakeSecurityType", 0)
+            // Validate the verification task by the verifier
             await _securityRegister.connect(_verifier1).validateVerificationTask(0)
+            // Approve the verification by the company
             await _securityRegister.connect(_company1).updateVerificationTask(0, "approve")
 
             await expect(_securityRegister.connect(_verifier1).validateVerificationTask(0))
@@ -505,12 +590,15 @@ describe( "SecurityRegister", () => {
         })
 
         it("should update a verification task and emit {VerificationTaskValidated} event", async () => {
-            await _securityRegister.connect(_company1).createCompany("fakeName", "fakeAddress", "fakeSiret")
+            // Create a register
+            await _securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeSiteAddress")
+            // Create a verifier
             await _securityRegister.connect(_verifier1)
                 .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber")
             await _securityRegister.connect(_company1).addVerifierToCompany(_verifier1)
-            await _securityRegister.connect(_company1).createRegister("fakeSiteName", "fakeSecuritySector")
-            await _securityRegister.connect(_company1).createVerificationTask(0, "fakeSecurityType")
+            // Create a verification task
+            await _securityRegister.connect(_company1).createVerificationTask("fakeSiteName", "fakeSecurityType", 0)
 
             await expect(_securityRegister.connect(_verifier1).validateVerificationTask(0))
                 .to.be.emit(_securityRegister, "VerificationTaskValidated")
@@ -518,24 +606,27 @@ describe( "SecurityRegister", () => {
         })
 
         it("should update a verification task and get the status = 1", async () => {
-            await _securityRegister.connect(_company1).createCompany("fakeName", "fakeAddress", "fakeSiret")
+            // Create a register
+            await _securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeSiteAddress")
+            // Create a verifier
             await _securityRegister.connect(_verifier1)
                 .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber")
             await _securityRegister.connect(_company1).addVerifierToCompany(_verifier1)
-            await _securityRegister.connect(_company1).createRegister("fakeSiteName", "fakeSecuritySector")
-            await _securityRegister.connect(_company1).createVerificationTask(0, "fakeSecurityType")
+            // Create a verification task
+            await _securityRegister.connect(_company1).createVerificationTask("fakeSiteName", "fakeSecurityType", 0)
+            // Validate the verification task by the verifier
             await _securityRegister.connect(_verifier1).validateVerificationTask(0)
 
             expect(await _securityRegister.getVerificationTaskStatus(0)).to.be.equal(BigInt("1"))
         })
-
     })
-
 
     context("Manage a verification task status by a company", async () => {
         let _securityRegister: SecurityRegister
         let _company1: HardhatEthersSigner
         let _verifier1: HardhatEthersSigner
+        let _companyAccount1: HardhatEthersSigner
 
         beforeEach(async () => {
 
@@ -543,92 +634,67 @@ describe( "SecurityRegister", () => {
                 securityRegister,
                 acc1,
                 acc2,
+                acc3,
             } = await deployDefaultContract()
 
             _securityRegister = securityRegister
             _company1 = acc1
             _verifier1 = acc2
+            _companyAccount1 = acc3
         })
 
         // test updateVerificationTask
-        it("prevent from approving a verification task as non company account", async () => {
-            await expect(_securityRegister.connect(_verifier1).updateVerificationTask(0, "approve"))
-                .to.be.revertedWith("You're not a company!")
+        it("prevent from doing actions on a verification task as non company account", async () => {
+            const actions = ["approve", "reject", "approveWithRestriction"]
+            for (let action in actions) {
+                await expect(_securityRegister.connect(_verifier1).updateVerificationTask(0, action))
+                    .to.be.revertedWith("You're not a company or authorized account!")
+            }
         })
 
-        it("prevent from rejecting a verification task as non company account", async () => {
-            await expect(_securityRegister.connect(_verifier1).updateVerificationTask(0, "reject"))
-                .to.be.revertedWith("You're not a company!")
+        it("prevent from doing actions on a verification task with no task created", async () => {
+            // Create a register
+            await _securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeAddressName")
+
+            const actions = ["approve", "reject", "approveWithRestriction"]
+            for (let action in actions) {
+                await expect(_securityRegister.connect(_company1).updateVerificationTask(0, action))
+                    .to.be.revertedWith("There is no verification task created!")
+            }
         })
 
-        it("prevent from approving with reservation a verification task as non company account",
-            async () => {
-            await expect(_securityRegister.connect(_verifier1)
-                .updateVerificationTask(0, "approveWithReservation"))
-                .to.be.revertedWith("You're not a company!")
-        })
 
-        it("prevent from approving a verification task with no task created", async () => {
-            await _securityRegister.connect(_company1).createCompany("fakeName", "fakeAddress", "fakeSiret")
-            await expect(_securityRegister.connect(_company1).updateVerificationTask(0, "approve"))
-                .to.be.revertedWith("There is no verification task created!")
-        })
-
-        it("prevent from rejecting a verification task with no task created", async () => {
-            await _securityRegister.connect(_company1).createCompany("fakeName", "fakeAddress", "fakeSiret")
-            await expect(_securityRegister.connect(_company1).updateVerificationTask(0, "reject"))
-                .to.be.revertedWith("There is no verification task created!")
-        })
-
-        it("prevent from approving with reservation a verification task with no task created", async () => {
-            await _securityRegister.connect(_company1).createCompany("fakeName", "fakeAddress", "fakeSiret")
-            await expect(_securityRegister.connect(_company1).updateVerificationTask(0, "approveWithReservation"))
-                .to.be.revertedWith("There is no verification task created!")
-        })
-
-        it("prevent from approving a verification task with status not validated by verifier", async () => {
-            await _securityRegister.connect(_company1).createCompany("fakeName", "fakeAddress", "fakeSiret")
+        it("prevent from doing actions on a verification task with status not validated by verifier", async () => {
+            // Create a register
+            await _securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeAddressName")
+            // Create a verifier
             await _securityRegister.connect(_verifier1)
                 .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber")
             await _securityRegister.connect(_company1).addVerifierToCompany(_verifier1)
-            await _securityRegister.connect(_company1).createRegister("fakeSiteName", "fakeSecuritySector")
-            await _securityRegister.connect(_company1).createVerificationTask(0, "fakeSecurityType")
+            // Create a verification task
+            await _securityRegister.connect(_company1).createVerificationTask("fakeSiteName", "fakeSecurityType", 0)
 
-            await expect(_securityRegister.connect(_company1).updateVerificationTask(0, "approve"))
-                .to.be.revertedWith("Unable to approve the verification task, because it has not been validated yet!")
+            const actions = ["approve", "reject", "approveWithRestriction"]
+            for (let action in actions) {
+                await expect(_securityRegister.connect(_company1).updateVerificationTask(0, action))
+                    .to.be.revertedWith("Unable to approve the verification task, because it has not been validated yet!")
+            }
         })
 
-        it("prevent from rejecting a verification task with status not validated by verifier", async () => {
-            await _securityRegister.connect(_company1).createCompany("fakeName", "fakeAddress", "fakeSiret")
-            await _securityRegister.connect(_verifier1)
-                .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber")
-            await _securityRegister.connect(_company1).addVerifierToCompany(_verifier1)
-            await _securityRegister.connect(_company1).createRegister("fakeSiteName", "fakeSecuritySector")
-            await _securityRegister.connect(_company1).createVerificationTask(0, "fakeSecurityType")
-
-            await expect(_securityRegister.connect(_company1).updateVerificationTask(0, "reject"))
-                .to.be.revertedWith("Unable to approve the verification task, because it has not been validated yet!")
-        })
-
-        it("prevent from approving with reservation a verification task with status not validated by verifier", async () => {
-            await _securityRegister.connect(_company1).createCompany("fakeName", "fakeAddress", "fakeSiret")
-            await _securityRegister.connect(_verifier1)
-                .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber")
-            await _securityRegister.connect(_company1).addVerifierToCompany(_verifier1)
-            await _securityRegister.connect(_company1).createRegister("fakeSiteName", "fakeSecuritySector")
-            await _securityRegister.connect(_company1).createVerificationTask(0, "fakeSecurityType")
-
-            await expect(_securityRegister.connect(_company1).updateVerificationTask(0, "approveWithReservation"))
-                .to.be.revertedWith("Unable to approve the verification task, because it has not been validated yet!")
-        })
 
         it("prevent from providing an invalid parameter", async () => {
-            await _securityRegister.connect(_company1).createCompany("fakeName", "fakeAddress", "fakeSiret")
+            // Create a register
+            await _securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeAddressName")
+            // Create a verifier
             await _securityRegister.connect(_verifier1)
                 .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber")
             await _securityRegister.connect(_company1).addVerifierToCompany(_verifier1)
-            await _securityRegister.connect(_company1).createRegister("fakeSiteName", "fakeSecuritySector")
-            await _securityRegister.connect(_company1).createVerificationTask(0, "fakeSecurityType")
+            // Create a verification task
+            await _securityRegister.connect(_company1).createVerificationTask("fakeSiteName", "fakeSecurityType", 0)
+            // Validate the verification task by verifier
             await _securityRegister.connect(_verifier1).validateVerificationTask(0)
 
             await expect(_securityRegister.connect(_company1).updateVerificationTask(0, "badParam"))
@@ -637,39 +703,98 @@ describe( "SecurityRegister", () => {
 
         // OK
         it("should approve a verification task and emit {VerificationTaskUpdated} event", async () => {
-            await _securityRegister.connect(_company1).createCompany("fakeName", "fakeAddress", "fakeSiret")
+            // Create a register
+            await _securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeAddressName")
+            // Add an account
+            await _securityRegister.connect(_company1).updateCompanyAccount(_companyAccount1, "fakeName", "fakeFirstName", "add")
+
+            // Create a verifier
             await _securityRegister.connect(_verifier1)
                 .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber")
             await _securityRegister.connect(_company1).addVerifierToCompany(_verifier1)
-            await _securityRegister.connect(_company1).createRegister("fakeSiteName", "fakeSecuritySector")
-            await _securityRegister.connect(_company1).createVerificationTask(0, "fakeSecurityType")
+            // Create a verification task
+            await _securityRegister.connect(_company1).createVerificationTask("fakeSiteName", "fakeSecurityType", 0)
+            // Validate the verification task by verifier
             await _securityRegister.connect(_verifier1).validateVerificationTask(0)
 
             await expect(_securityRegister.connect(_company1).updateVerificationTask(0, "approve"))
                 .to.be.emit(_securityRegister, "VerificationTaskUpdated")
                 .withArgs(_company1.address, 0, 2)
+
         })
 
-        it("should approve a verification task and get the status = 2", async () => {
-            await _securityRegister.connect(_company1).createCompany("fakeName", "fakeAddress", "fakeSiret")
+        it("should approve a verification task and emit {VerificationTaskUpdated} event  with delegated account", async () => {
+            // Create a register
+            await _securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeAddressName")
+            // Add an account
+            await _securityRegister.connect(_company1).updateCompanyAccount(_companyAccount1, "fakeName", "fakeFirstName", "add")
+
+            // Create a verifier
             await _securityRegister.connect(_verifier1)
                 .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber")
             await _securityRegister.connect(_company1).addVerifierToCompany(_verifier1)
-            await _securityRegister.connect(_company1).createRegister("fakeSiteName", "fakeSecuritySector")
-            await _securityRegister.connect(_company1).createVerificationTask(0, "fakeSecurityType")
+            // Create a verification task
+            await _securityRegister.connect(_company1).createVerificationTask("fakeSiteName", "fakeSecurityType", 0)
+            // Validate the verification task by verifier
             await _securityRegister.connect(_verifier1).validateVerificationTask(0)
+
+            // as a company account delegated
+            await expect(_securityRegister.connect(_companyAccount1).updateVerificationTask(0, "approve"))
+                .to.be.emit(_securityRegister, "VerificationTaskUpdated")
+                .withArgs(_companyAccount1.address, 0, 2)
+        })
+
+        it("should approve a verification task and get the status = 2", async () => {
+            // Create a register
+            await _securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeAddressName")
+            // Create a verifier
+            await _securityRegister.connect(_verifier1)
+                .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber")
+            await _securityRegister.connect(_company1).addVerifierToCompany(_verifier1)
+            // Create a verification task
+            await _securityRegister.connect(_company1).createVerificationTask("fakeSiteName", "fakeSecurityType", 0)
+            // Validate the verification task by verifier
+            await _securityRegister.connect(_verifier1).validateVerificationTask(0)
+            // Approve the verification task by the company
             await _securityRegister.connect(_company1).updateVerificationTask(0, "approve")
 
             expect(await _securityRegister.getVerificationTaskStatus(0)).to.be.equal(BigInt("2"))
         })
 
-        it("should reject a verification task and emit {VerificationTaskUpdated} event", async () => {
-            await _securityRegister.connect(_company1).createCompany("fakeName", "fakeAddress", "fakeSiret")
+        it("should approve a verification task and get the status = 2 with delegated account", async () => {
+            // Create a register
+            await _securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeAddressName")
+            // Add an account
+            await _securityRegister.connect(_company1).updateCompanyAccount(_companyAccount1, "fakeName", "fakeFirstName", "add")
+            // Create a verifier
             await _securityRegister.connect(_verifier1)
                 .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber")
             await _securityRegister.connect(_company1).addVerifierToCompany(_verifier1)
-            await _securityRegister.connect(_company1).createRegister("fakeSiteName", "fakeSecuritySector")
-            await _securityRegister.connect(_company1).createVerificationTask(0, "fakeSecurityType")
+            // Create a verification task
+            await _securityRegister.connect(_company1).createVerificationTask("fakeSiteName", "fakeSecurityType", 0)
+            // Validate the verification task by verifier
+            await _securityRegister.connect(_verifier1).validateVerificationTask(0)
+            // Approve the verification task by the company
+            await _securityRegister.connect(_companyAccount1).updateVerificationTask(0, "approve")
+
+            expect(await _securityRegister.getVerificationTaskStatus(0)).to.be.equal(BigInt("2"))
+        })
+
+        it("should reject a verification task and emit {VerificationTaskUpdated} event", async () => {
+            // Create a register
+            await _securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeAddressName")
+            // Create a verifier
+            await _securityRegister.connect(_verifier1)
+                .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber")
+            await _securityRegister.connect(_company1).addVerifierToCompany(_verifier1)
+            // Create a verification task
+            await _securityRegister.connect(_company1).createVerificationTask("fakeSiteName", "fakeSecurityType", 0)
+            // Validate the verification task by verifier
             await _securityRegister.connect(_verifier1).validateVerificationTask(0)
 
             await expect(_securityRegister.connect(_company1).updateVerificationTask(0, "reject"))
@@ -677,26 +802,77 @@ describe( "SecurityRegister", () => {
                 .withArgs(_company1.address, 0, 3)
         })
 
-        it("should reject a verification task and get the status = 2", async () => {
-            await _securityRegister.connect(_company1).createCompany("fakeName", "fakeAddress", "fakeSiret")
+        it("should reject a verification task and emit {VerificationTaskUpdated} event with delegated account", async () => {
+            // Create a register
+            await _securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeAddressName")
+            // Add an account
+            await _securityRegister.connect(_company1).updateCompanyAccount(_companyAccount1, "fakeName", "fakeFirstName", "add")
+            // Create a verifier
             await _securityRegister.connect(_verifier1)
                 .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber")
             await _securityRegister.connect(_company1).addVerifierToCompany(_verifier1)
-            await _securityRegister.connect(_company1).createRegister("fakeSiteName", "fakeSecuritySector")
-            await _securityRegister.connect(_company1).createVerificationTask(0, "fakeSecurityType")
+            // Create a verification task
+            await _securityRegister.connect(_company1).createVerificationTask("fakeSiteName", "fakeSecurityType", 0)
+            // Validate the verification task by verifier
             await _securityRegister.connect(_verifier1).validateVerificationTask(0)
+
+            await expect(_securityRegister.connect(_companyAccount1).updateVerificationTask(0, "reject"))
+                .to.be.emit(_securityRegister, "VerificationTaskUpdated")
+                .withArgs(_companyAccount1.address, 0, 3)
+        })
+
+
+
+        it("should reject a verification task and get the status = 2", async () => {
+            // Create a register
+            await _securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeAddressName")
+            // Create a verifier
+            await _securityRegister.connect(_verifier1)
+                .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber")
+            await _securityRegister.connect(_company1).addVerifierToCompany(_verifier1)
+            // Create a verification task
+            await _securityRegister.connect(_company1).createVerificationTask("fakeSiteName", "fakeSecurityType", 0)
+            // Validate the verification task by verifier
+            await _securityRegister.connect(_verifier1).validateVerificationTask(0)
+            // Reject the verification task by the company
             await _securityRegister.connect(_company1).updateVerificationTask(0, "reject")
 
             expect(await _securityRegister.getVerificationTaskStatus(0)).to.be.equal(BigInt("3"))
         })
 
-        it("should approve with reservation a verification task and emit {VerificationTaskUpdated} event", async () => {
-            await _securityRegister.connect(_company1).createCompany("fakeName", "fakeAddress", "fakeSiret")
+        it("should reject a verification task and get the status = 2 with delegated account", async () => {
+            // Create a register
+            await _securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeAddressName")
+            // Add an account
+            await _securityRegister.connect(_company1).updateCompanyAccount(_companyAccount1, "fakeName", "fakeFirstName", "add")
+            // Create a verifier
             await _securityRegister.connect(_verifier1)
                 .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber")
             await _securityRegister.connect(_company1).addVerifierToCompany(_verifier1)
-            await _securityRegister.connect(_company1).createRegister("fakeSiteName", "fakeSecuritySector")
-            await _securityRegister.connect(_company1).createVerificationTask(0, "fakeSecurityType")
+            // Create a verification task
+            await _securityRegister.connect(_company1).createVerificationTask("fakeSiteName", "fakeSecurityType", 0)
+            // Validate the verification task by verifier
+            await _securityRegister.connect(_verifier1).validateVerificationTask(0)
+            // Reject the verification task by the company
+            await _securityRegister.connect(_companyAccount1).updateVerificationTask(0, "reject")
+
+            expect(await _securityRegister.getVerificationTaskStatus(0)).to.be.equal(BigInt("3"))
+        })
+
+        it("should approve with reservation a verification task and emit {VerificationTaskUpdated} event", async () => {
+            // Create a register
+            await _securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeAddressName")
+            // Create a verifier
+            await _securityRegister.connect(_verifier1)
+                .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber")
+            await _securityRegister.connect(_company1).addVerifierToCompany(_verifier1)
+            // Create a verification task
+            await _securityRegister.connect(_company1).createVerificationTask("fakeSiteName", "fakeSecurityType", 0)
+            // Validate the verification task by verifier
             await _securityRegister.connect(_verifier1).validateVerificationTask(0)
 
             await expect(_securityRegister.connect(_company1).updateVerificationTask(0, "approveWithReservation"))
@@ -704,15 +880,60 @@ describe( "SecurityRegister", () => {
                 .withArgs(_company1.address, 0, 4)
         })
 
-        it("should approve with reservation a verification task and get the status = 3", async () => {
-            await _securityRegister.connect(_company1).createCompany("fakeName", "fakeAddress", "fakeSiret")
+        it("should approve with reservation a verification task and emit {VerificationTaskUpdated} event with delegated account", async () => {
+            // Create a register
+            await _securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeAddressName")
+            // Add an account
+            await _securityRegister.connect(_company1).updateCompanyAccount(_companyAccount1, "fakeName", "fakeFirstName", "add")
+            // Create a verifier
             await _securityRegister.connect(_verifier1)
                 .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber")
             await _securityRegister.connect(_company1).addVerifierToCompany(_verifier1)
-            await _securityRegister.connect(_company1).createRegister("fakeSiteName", "fakeSecuritySector")
-            await _securityRegister.connect(_company1).createVerificationTask(0, "fakeSecurityType")
+            // Create a verification task
+            await _securityRegister.connect(_company1).createVerificationTask("fakeSiteName", "fakeSecurityType", 0)
+            // Validate the verification task by verifier
             await _securityRegister.connect(_verifier1).validateVerificationTask(0)
+
+            await expect(_securityRegister.connect(_companyAccount1).updateVerificationTask(0, "approveWithReservation"))
+                .to.be.emit(_securityRegister, "VerificationTaskUpdated")
+                .withArgs(_companyAccount1.address, 0, 4)
+        })
+
+        it("should approve with reservation a verification task and get the status = 3", async () => {
+            // Create a register
+            await _securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeAddressName")
+            // Create a verifier
+            await _securityRegister.connect(_verifier1)
+                .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber")
+            await _securityRegister.connect(_company1).addVerifierToCompany(_verifier1)
+            // Create a verification task
+            await _securityRegister.connect(_company1).createVerificationTask("fakeSiteName", "fakeSecurityType", 0)
+            // Validate the verification task by verifier
+            await _securityRegister.connect(_verifier1).validateVerificationTask(0)
+            // Approve with restriction the verification task by the company
             await _securityRegister.connect(_company1).updateVerificationTask(0, "approveWithReservation")
+
+            expect(await _securityRegister.getVerificationTaskStatus(0)).to.be.equal(BigInt("4"))
+        })
+
+        it("should approve with reservation a verification task and get the status = 3 with delegated account", async () => {
+            // Create a register
+            await _securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeAddressName")
+            // Add an account
+            await _securityRegister.connect(_company1).updateCompanyAccount(_companyAccount1, "fakeName", "fakeFirstName", "add")
+            // Create a verifier
+            await _securityRegister.connect(_verifier1)
+                .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber")
+            await _securityRegister.connect(_company1).addVerifierToCompany(_verifier1)
+            // Create a verification task
+            await _securityRegister.connect(_company1).createVerificationTask("fakeSiteName", "fakeSecurityType", 0)
+            // Validate the verification task by verifier
+            await _securityRegister.connect(_verifier1).validateVerificationTask(0)
+            // Approve with restriction the verification task by the company
+            await _securityRegister.connect(_companyAccount1).updateVerificationTask(0, "approveWithReservation")
 
             expect(await _securityRegister.getVerificationTaskStatus(0)).to.be.equal(BigInt("4"))
         })
@@ -755,12 +976,16 @@ describe( "SecurityRegister", () => {
         })
 
         it("prevent from minting a token while status is not approved or rejected", async () => {
-            await _securityRegister.connect(_company1).createCompany("fakeName", "fakeAddress", "fakeSiret")
+            // Create a register
+            await _securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeAddressName")
+            // Create a verifier
             await _securityRegister.connect(_verifier1)
                 .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber")
             await _securityRegister.connect(_company1).addVerifierToCompany(_verifier1)
-            await _securityRegister.connect(_company1).createRegister("fakeSiteName", "fakeSecuritySector")
-            await _securityRegister.connect(_company1).createVerificationTask(0, "fakeSecurityType")
+            // Create a verification task
+            await _securityRegister.connect(_company1).createVerificationTask("fakeSiteName", "fakeSecurityType", 0)
+            // Validate the verification task by verifier
             await _securityRegister.connect(_verifier1).validateVerificationTask(0)
 
             await expect(_securityRegister.connect(_company1).safeMint(0, _tokenURI))
@@ -768,13 +993,18 @@ describe( "SecurityRegister", () => {
         })
 
         it("should mint a token and emit {Transfer} event", async () => {
-            await _securityRegister.connect(_company1).createCompany("fakeName", "fakeAddress", "fakeSiret")
+            // Create a register
+            await _securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeAddressName")
+            // Create a verifier
             await _securityRegister.connect(_verifier1)
                 .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber")
             await _securityRegister.connect(_company1).addVerifierToCompany(_verifier1)
-            await _securityRegister.connect(_company1).createRegister("fakeSiteName", "fakeSecuritySector")
-            await _securityRegister.connect(_company1).createVerificationTask(0, "fakeSecurityType")
+            // Create a verification task
+            await _securityRegister.connect(_company1).createVerificationTask("fakeSiteName", "fakeSecurityType", 0)
+            // Validate the verification task by verifier
             await _securityRegister.connect(_verifier1).validateVerificationTask(0)
+            // Approve the verification task by the company
             await _securityRegister.connect(_company1).updateVerificationTask(0, "approve")
 
             await expect(_securityRegister.connect(_company1).safeMint(0, _tokenURI))
@@ -783,13 +1013,18 @@ describe( "SecurityRegister", () => {
         })
 
         it("should mint a token and emit {MetadataUpdate} event", async () => {
-            await _securityRegister.connect(_company1).createCompany("fakeName", "fakeAddress", "fakeSiret")
+            // Create a register
+            await _securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeAddressName")
+            // Create a verifier
             await _securityRegister.connect(_verifier1)
                 .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber")
             await _securityRegister.connect(_company1).addVerifierToCompany(_verifier1)
-            await _securityRegister.connect(_company1).createRegister("fakeSiteName", "fakeSecuritySector")
-            await _securityRegister.connect(_company1).createVerificationTask(0, "fakeSecurityType")
+            // Create a verification task
+            await _securityRegister.connect(_company1).createVerificationTask("fakeSiteName", "fakeSecurityType", 0)
+            // Validate the verification task by verifier
             await _securityRegister.connect(_verifier1).validateVerificationTask(0)
+            // Approve the verification task by the company
             await _securityRegister.connect(_company1).updateVerificationTask(0, "approve")
 
             await expect(_securityRegister.connect(_company1).safeMint(0, _tokenURI))
@@ -803,57 +1038,108 @@ describe( "SecurityRegister", () => {
         })
 
         it("should get a tokenURI for 1 task with tokenId = 0", async () => {
-            await _securityRegister.connect(_company1).createCompany("fakeName", "fakeAddress", "fakeSiret")
+            // Create a register
+            await _securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeAddressName")
+            // Create a verifier
             await _securityRegister.connect(_verifier1)
                 .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber")
             await _securityRegister.connect(_company1).addVerifierToCompany(_verifier1)
-            await _securityRegister.connect(_company1).createRegister("fakeSiteName", "fakeSecuritySector")
-            await _securityRegister.connect(_company1).createVerificationTask(0, "fakeSecurityType")
+            // Create a verification task
+            await _securityRegister.connect(_company1).createVerificationTask("fakeSiteName", "fakeSecurityType", 0)
+            // Validate the verification task by verifier
             await _securityRegister.connect(_verifier1).validateVerificationTask(0)
+            // Approve the verification task by the company
             await _securityRegister.connect(_company1).updateVerificationTask(0, "approve")
+            // Mint the register by the company
             await _securityRegister.connect(_company1).safeMint(0, `${_tokenURI}0`)
 
             expect(await _securityRegister.tokenURI("0")).to.be.equal(`${_tokenURI}0`)
         })
 
-        it("should get some tokenURIs with 3 mints for 3 companies", async () => {
-            await _securityRegister.connect(_company1).createCompany("fakeName1", "fakeAddress1", "fakeSiret1")
-            await _securityRegister.connect(_company2).createCompany("fakeName2", "fakeAddress2", "fakeSiret2")
-            await _securityRegister.connect(_company3).createCompany("fakeName3", "fakeAddress3", "fakeSiret3")
+    })
 
-            await _securityRegister.connect(_verifier1).createVerifier(
-                "fakeName1", "fakeAddress1", "fakeSiret1", "fakeApprovalNumber1")
-            await _securityRegister.connect(_verifier2).createVerifier(
-                "fakeName2", "fakeAddress2", "fakeSiret2", "fakeApprovalNumber2")
+    context("Some getters", async () => {
+        let _securityRegister: SecurityRegister
+        let _company1: HardhatEthersSigner
+        let _verifier1: HardhatEthersSigner
+        let _account1: HardhatEthersSigner
+        let _account2: HardhatEthersSigner
 
-            await _securityRegister.connect(_company1).addVerifierToCompany(_verifier1)
-            await _securityRegister.connect(_company2).addVerifierToCompany(_verifier1)
-            await _securityRegister.connect(_company3).addVerifierToCompany(_verifier2)
+        beforeEach(async () => {
 
-            await _securityRegister.connect(_company1).createRegister("fakeSiteName1", "fakeSecuritySector1")
-            await _securityRegister.connect(_company2).createRegister("fakeSiteName2", "fakeSecuritySector2")
-            await _securityRegister.connect(_company3).createRegister("fakeSiteName3", "fakeSecuritySector3")
+            const {
+                securityRegister,
+                acc1,
+                acc2,
+                acc3,
+                acc4,
 
-            // registerId = 0
-            await _securityRegister.connect(_company1).createVerificationTask(0, "fakeSecurityType1")
-            await _securityRegister.connect(_company2).createVerificationTask(0, "fakeSecurityType2")
-            await _securityRegister.connect(_company3).createVerificationTask(0, "fakeSecurityType3")
+            } = await deployDefaultContract()
 
-            await _securityRegister.connect(_verifier1).validateVerificationTask(0)
-            await _securityRegister.connect(_verifier1).validateVerificationTask(1)
-            await _securityRegister.connect(_verifier2).validateVerificationTask(2)
+            _securityRegister = securityRegister
+            _company1 = acc1
+            _verifier1 = acc2
+            _account1 = acc3
+            _account2 = acc4
+        })
 
-            await _securityRegister.connect(_company1).updateVerificationTask(0, "approve")
-            await _securityRegister.connect(_company2).updateVerificationTask(1, "approve")
-            await _securityRegister.connect(_company3).updateVerificationTask(2, "reject")
+        // test isCompany
+        it("should get false if a company has not been created", async () => {
+            expect(await _securityRegister.isCompany(_company1)).to.be.equal(false)
+        })
 
-            await _securityRegister.connect(_company1).safeMint(0, `${_tokenURI}0`)
-            await _securityRegister.connect(_company2).safeMint(1, `${_tokenURI}1`)
-            await _securityRegister.connect(_company3).safeMint(2, `${_tokenURI}2`)
+        it("should get true  if a company has been created", async () => {
+            // Create a register
+            await _securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeAddressName")
 
-            expect(await _securityRegister.tokenURI("0")).to.be.equal(`${_tokenURI}0`)
-            expect(await _securityRegister.tokenURI("1")).to.be.equal(`${_tokenURI}1`)
-            expect(await _securityRegister.tokenURI("2")).to.be.equal(`${_tokenURI}2`)
+            expect(await _securityRegister.isCompany(_company1)).to.be.equal(true)
+        })
+
+        // test isCompanyAccount
+        it("should get false if a company has not been added an account", async () => {
+            expect(await _securityRegister.isCompanyAccount(_company1)).to.be.equal(false)
+        })
+
+        it("should get true  if a company has been added an account", async () => {
+            // Create a register
+            await _securityRegister.connect(_company1)
+                .createRegister("fakeName", "fakeAddress", "fakeSiret", "fakeSiteName", "fakeAddressName")
+            // Add a company account
+            await _securityRegister.connect(_company1)
+                .updateCompanyAccount(_account1, "fakeName", "fakeFirstName", "add")
+
+            expect(await _securityRegister.isCompanyAccount(_account1)).to.be.equal(true)
+        })
+
+        // test isVerifier
+        it("should get false if a verifier has not been created", async () => {
+            expect(await _securityRegister.isVerifier(_company1)).to.be.equal(false)
+        })
+
+        it("should get true  if a verifier has been created", async () => {
+            // Create a verifier
+            await _securityRegister.connect(_company1)
+                .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber")
+
+            expect(await _securityRegister.isVerifier(_company1)).to.be.equal(true)
+        })
+
+        // test isVerifierAccount
+        it("should get false if a verifier has not been added an account", async () => {
+            expect(await _securityRegister.isVerifierAccount(_account1)).to.be.equal(false)
+        })
+
+        it("should get true  if a verifier has been added an account", async () => {
+            // Create a register
+            await _securityRegister.connect(_verifier1)
+                .createVerifier("fakeName", "fakeAddress", "fakeSiret", "fakeApprovalNumber")
+            // Add a company account
+            await _securityRegister.connect(_verifier1)
+                .updateVerifierAccount(_account1, "fakeName", "fakeFirstName", "add")
+
+            expect(await _securityRegister.isVerifierAccount(_account1)).to.be.equal(true)
         })
     })
 })
