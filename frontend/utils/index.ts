@@ -1,6 +1,14 @@
-import { abi, contractAddress, genesisBlock, network} from "@/constants"
+import {abi, contractAddress, genesisBlock, httpTransport, network} from "@/constants"
 import { readContract, prepareWriteContract, writeContract } from "@wagmi/core"
-import { BaseError, ContractFunctionRevertedError, createPublicClient, GetLogsReturnType, http, parseAbiItem } from "viem"
+import {
+    BaseError,
+    ContractFunctionRevertedError,
+    createPublicClient,
+    GetLogsReturnType,
+    http,
+    HttpTransport,
+    parseAbiItem
+} from "viem"
 import { hardhat, sepolia } from "viem/chains"
 import {
     CompanyAccountUpdated,
@@ -28,9 +36,16 @@ const usedNetwork = () => {
     }
 }
 
+const useHttp = (): HttpTransport => {
+    switch (network) {
+        case 'sepolia': return http(httpTransport)
+        case 'hardhat': return http()
+        default: return http()
+    }
+}
 export const client = createPublicClient({
     chain: usedNetwork(),
-    transport: http()
+    transport: useHttp()
 })
 
 
