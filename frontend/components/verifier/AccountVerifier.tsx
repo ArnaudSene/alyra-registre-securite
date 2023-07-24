@@ -53,7 +53,7 @@ export const AccountVerifier = () => {
             })
             setActiveAccounts(accounts)
         })
-    }, [isConnected, refresh, accountRefresh, refreshScreen])
+    }, [isConnected, refreshScreen])
 
     const submitRemoveVerifierAccount = (account: `0x${string}`, name: string, firstName: string) => {
         writeContractByFunctionName("updateVerifierAccount", account, name, firstName, "remove")
@@ -78,7 +78,7 @@ export const AccountVerifier = () => {
                 })
             })
             .finally(() => {
-                setRefresh(Math.random())
+                // setRefresh(Math.random())
                 setRefreshScreen(Math.random())
             })
     }

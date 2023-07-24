@@ -38,10 +38,11 @@ export const VerificationTaskMenuForVerifier = () => {
                 })
             })
             .finally(() => {
-                setLoading(false)
-                setApproveVerificationTaskRefresh(true)
-                setRefresh(selectedVerificationTask)
+
+                // setApproveVerificationTaskRefresh(true)
+                // setRefresh(selectedVerificationTask)
                 setRefreshScreen(selectedVerificationTask)
+                setLoading(false)
             })
     }
 

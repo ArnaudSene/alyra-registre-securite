@@ -36,28 +36,31 @@ export const VerificationTaskForVerifier = () => {
 
 
     useEffect(() => {
+        console.log("load VerificationTaskForVerifier")
         setLoading(true)
         LoadData()
 
-    }, [refreshScreen, refresh, verificationTaskRefresh, loading, createVerificationTaskRefresh, approveVerificationTaskRefresh])
+    }, [refreshScreen, loading ])
 
 
     const LoadData = () => {
         getVerificationTaskUpdated()
         getVerificationTaskValidated()
-        getVerificationTasks()
         getSiteDetail()
         getVerifierDetail()
+        getVerificationTasks()
     }
 
     const getVerificationTaskUpdated = async () => {
-        getVerificationTaskUpdatedEvents()
-            .then(data => setUpdatedTasks(data))
+        // getVerificationTaskUpdatedEvents()
+        //     .then(data => setUpdatedTasks(data))
+        setUpdatedTasks(await getVerificationTaskUpdatedEvents())
     }
 
     const getVerificationTaskValidated = async () => {
-        getVerificationTaskValidatedEventsv2()
-            .then(data => setValidatedTasks(data))
+        // getVerificationTaskValidatedEventsv2()
+        //     .then(data => setValidatedTasks(data))
+        setValidatedTasks(await getVerificationTaskValidatedEventsv2())
     }
 
     const getVerificationTasks = async () => {
@@ -82,7 +85,10 @@ export const VerificationTaskForVerifier = () => {
                 }
 
             })
-            .finally(()  => setVerificationTasks(verificationTasks_))
+            .finally(()  => {
+                setVerificationTasks(verificationTasks_)
+                setLoading(false)
+            })
     }
 
     const getSiteDetail = async () => {
@@ -108,7 +114,8 @@ export const VerificationTaskForVerifier = () => {
                 if (index !== -1)
                     setVerifier(data[index])
             }
-        ).finally(() => setLoading(false))
+        )
+
     }
 
     const getSiteInfo = (siteName: string) => {
@@ -125,34 +132,6 @@ export const VerificationTaskForVerifier = () => {
     }
 
 
-    const submitValidateVerificationTaskTask = () => {
-        writeContractByFunctionName("validateVerificationTask", taskId)
-            .then(() => {
-                setLoading(true)
-                toast({
-                    title: 'Validation de vérification de sécurité.',
-                    description: `Validation de la tâche ${taskId} exeécutée avec succès`,
-                    status: 'success',
-                    duration: 5000,
-                    isClosable: true,
-                })
-            })
-            .catch(err => {
-                console.log("Validate task error => " + err)
-                toast({
-                    title: 'Erreur',
-                    description: `Impossible de valider la tâche ${taskId}!`,
-                    status: 'error',
-                    duration: 5000,
-                    isClosable: true,
-                })
-            })
-            .finally(() => {
-                setLoading(false)
-                setApproveVerificationTaskRefresh(true)
-                setRefresh(1)
-            })
-    }
 
     const onSelectTask = (taskId: number, taskStatus: number) => {
         setSelectedVerificationTask(taskId)

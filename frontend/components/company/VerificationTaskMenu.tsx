@@ -38,7 +38,7 @@ export const VerificationTaskMenu = () => {
                 })
             })
             .finally(() => {
-                setApproveVerificationTaskRefresh(true)
+                // setApproveVerificationTaskRefresh(true)
                 setRefreshScreen(Math.random())
                 setLoading(false)
             })

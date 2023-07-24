@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.2.2] (2023-07-23)
+
+### fix: Sepolia RPC
+
+- update the Sepolia rpc. The default one reach https://rpc.sepolia.org which has a very poor score (https://chainlist.org/chain/11155111?testnets=true)
+- Use of https://endpoints.omniatech.io/v1/eth/sepolia/public
+- fix performance issues on Sepolia
+
+---
+
 ## [0.2.1] (2023-07-23)
 
 ### fix: demo video missing
