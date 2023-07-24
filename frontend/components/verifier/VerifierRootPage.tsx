@@ -8,6 +8,8 @@ import {useIdentityContext} from "@/contexts/Identity";
 import {AccountVerifier} from "@/components/verifier/AccountVerifier";
 import {VerificationTaskForVerifier} from "@/components/verifier/VerificationTaskForVerifier";
 import {VerificationTaskMenuForVerifier} from "@/components/verifier/VerificationTaskMenuForVerifier";
+import {VerificationTask} from "@/components/company/VerificationTask";
+import {VerificationTaskForVerifierv2} from "@/components/verifier/VerificationTaskForVerifierv2";
 
 export const VerifierRootPage = () => {
     const { address, isConnected } = useAccount()
@@ -39,7 +41,7 @@ export const VerifierRootPage = () => {
             }
         })
 
-    }, [isConnected, address, refreshScreen])
+    }, [isConnected, address])
 
     const toggleMenu = (menu: string) => {
         setSelectedScreen(menu)
@@ -107,7 +109,8 @@ export const VerifierRootPage = () => {
 
                     {/*Verification*/}
                     <div className={`flex flex-col mx-auto ${toggleVerification}`}>
-                        <VerificationTaskForVerifier />
+                        <VerificationTaskForVerifierv2 />
+
                     </div>
                 </div>
 

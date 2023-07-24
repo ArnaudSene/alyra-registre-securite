@@ -54,8 +54,9 @@ export const VerificationTask = () => {
         setSelectedVerificationTask(-1)
         setLoading(true)
         LoadData()
-    }, [refreshScreen, refresh, verificationTaskRefresh, loading, createVerificationTaskRefresh])
+    }, [refreshScreen])
 
+        // [refreshScreen, refresh, verificationTaskRefresh, loading, createVerificationTaskRefresh]
     const LoadData = () => {
         getVerificationTaskUpdated()
         getVerificationTaskValidated()
@@ -69,14 +70,12 @@ export const VerificationTask = () => {
 
     const getVerificationTasks = async () => {
         let verificationTasks_: IVerificationTaskCreated[] = []
-        let verifierProfiles_: IVerifierProfile[] = []
 
         getVerificationTaskCreatedEventsv2()
             .then(data => {
                 // Get Verification tasks
                 for (let i = 0; i < data.length; i++) {
                     const verificationTaskCreated: IVerificationTaskCreated = data[i]
-
 
                     if(verificationTaskCreated.company !== address)
                         continue
@@ -94,8 +93,6 @@ export const VerificationTask = () => {
             .finally(()  => {
                 setVerificationTasks(verificationTasks_)
                 setVerificationTasksTemp(verificationTasks)
-                setVerifierProfiles(verifierProfiles_)
-                verificationTask()
                 setLoading(false)
             })
     }
@@ -110,6 +107,16 @@ export const VerificationTask = () => {
             verifierProfiles.map((v) => {
                 if (v.verifier === task.verifier)
                     verifierProfile = v
+            })
+
+            validatedTasks.map((_task) => {
+                if (_task.taskId === task.taskId && _task.taskStatus > task.taskStatus)
+                    task.taskStatus = _task.taskStatus
+            })
+
+            updatedTasks.map((_task) => {
+                if (_task.taskId === task.taskId && _task.taskStatus > task.taskStatus)
+                    task.taskStatus = _task.taskStatus
             })
 
             verificationTasksv2_.push({
@@ -153,7 +160,9 @@ export const VerificationTask = () => {
                         sites.push(siteCompany)
                     }
                 })
-            .finally(() => setSites(sites))
+            .finally(() => {
+                setSites(sites)
+            })
     }
 
     const getVerifierProfiles = async () => {
@@ -181,17 +190,17 @@ export const VerificationTask = () => {
                         _account = companyAccount
                     }
                 })
-            .finally(() => setAccountCompany(_account))
+            .finally(() => {
+                setAccountCompany(_account)
+
+            })
     }
 
     const getVerificationTaskValidated = async () => {
-        // const data = await getVerificationTaskValidatedEventsv2()
         setValidatedTasks(await getVerificationTaskValidatedEventsv2())
     }
 
     const getVerificationTaskUpdated = async () => {
-        // const data = await getVerificationTaskUpdatedEvents()
-
         setUpdatedTasks(await getVerificationTaskUpdatedEvents())
     }
 
@@ -257,7 +266,10 @@ export const VerificationTask = () => {
                 _registerCompany.push(companySite)
             }
 
-        }).finally(() => setRegistersCreated(_registerCompany))
+        }).finally(() => {
+            setRegistersCreated(_registerCompany)
+
+        })
     }
 
 
@@ -429,7 +441,7 @@ export const VerificationTask = () => {
                             <div className="text-left md:text-center mt-3 md:mt-0  md:border-x md:border-b md:border-gray-700 md:py-3">
                                 <div className="flex md:block">
                                     <div className="font-bold w-2/12 md:hidden pl-1">Adresse</div>
-                                    <div className="pl-1 md:p0">{getSiteInfo(data.siteName)?.siteAddressName}</div>
+                                    <div className="pl-1 md:p0">{data.siteAddress}</div>
                                 </div>
                             </div>
 
@@ -468,145 +480,12 @@ export const VerificationTask = () => {
                                 </div>
                             </div>
 
-                            {/*<button className="md:w-16" onClick={() => submitEditVerificationTask(data.account as `0x${string}`, data.name, data.firstName)}>*/}
-                            {/*    <div className="flex justify-end md:block md:text-center border-b border-gray-700 md:border-0 p-2 md:p-0">*/}
-                            {/*        <div className="font-bold md:hidden bg-rose-500 mr-2">Supprimer</div>*/}
-                            {/*        <div className="hidden md:block">X</div>*/}
-                            {/*    </div>*/}
-                            {/*</button>*/}
                         </div>
                     )
                     }
                 </div>
 
-                {/*<div className=" flex flex-col md:py-2">*/}
-                {/*    <div className="hidden md:grid md:grid-cols-11 md:gap-0 border-b border-rose-500 bg-gray-700 font-bold*/}
-                {/*        text-xs md:text-sm md:py-3 text-center md:text-center md:mb-2">*/}
 
-                {/*        /!*verification task*!/*/}
-                {/*        <div className="md:border-gray-900 md:border-x">Task id</div>*/}
-                {/*        <div className="md:border-gray-900 md:border-x">Statut</div>*/}
-                {/*        <div className="md:border-gray-900 md:border-x">Sector</div>*/}
-                {/*        <div className="md:border-gray-900 md:border-x">Type</div>*/}
-                {/*        /!*company*!/*/}
-                {/*        <div className="md:border-gray-900 md:border-x">Site</div>*/}
-                {/*        <div className="md:border-gray-900 md:border-x">Site Adresse</div>*/}
-                {/*        /!*verifier*!/*/}
-                {/*        <div className="md:border-gray-900 md:border-x">Vérificateur</div>*/}
-                {/*        <div className="md:border-gray-900 md:border-x">Adresse</div>*/}
-                {/*        <div className="md:border-gray-900 md:border-x">Siret</div>*/}
-                {/*        <div className="md:border-gray-900 md:border-x">Approval</div>*/}
-                {/*        <div className="md:border-gray-900 md:border-x">Date de création</div>*/}
-
-                {/*    </div>*/}
-
-                {/*    {verificationTasks.map((data: IVerificationTaskCreated) =>*/}
-                {/*        <div className="flex flex-col md:grid md:grid-cols-11 text-xs text-center*/}
-                {/*            border-t border-t-gray-600 md:border-0  pb-3 md:p-0 md:my-0*/}
-                {/*            bg-gradient-to-b from-gray-800 to-gray-900*/}
-                {/*            md:bg-gradient-to-t md:from-gray-900 md:to-gray-900*/}
-                {/*            hover:bg-gradient-to-t hover:from-gray-800 hover:to-gray-700 hover:text-cyan-300*/}
-                {/*            active:bg-gradient-to-t active:from-cyan-500 active:to-cyan-400 active:text-gray-700*/}
-                {/*            "*/}
-                {/*            onClick={() => onSelectTask(Number(data.taskId), Number(data.taskStatus))}>*/}
-
-                {/*            /!*Verification task info*!/*/}
-                {/*            <div className="text-left md:text-center mt-3 md:mt-0  md:border-x md:border-b md:border-gray-700 md:py-3">*/}
-                {/*                <div className="flex md:block">*/}
-                {/*                    <div className="font-bold w-2/12 md:hidden pl-1">Task id</div>*/}
-                {/*                    <div className="pl-1 md:p0">{Number(data.taskId)}</div>*/}
-                {/*                </div>*/}
-                {/*            </div>*/}
-
-                {/*            <div className="text-left md:text-center mt-3 md:mt-0  md:border-x md:border-b md:border-gray-700 md:py-3">*/}
-                {/*                <div className="flex md:block">*/}
-                {/*                    <div className="font-bold w-2/12 md:hidden pl-1">Statut</div>*/}
-                {/*                    <div className={`*/}
-                {/*                        ${Number(data.taskStatus) === 0 && ' text-cyan-500'}*/}
-                {/*                        ${Number(data.taskStatus) === 1 && ' text-purple-500'}*/}
-                {/*                        ${Number(data.taskStatus) === 2 && ' text-lime-500'}*/}
-                {/*                        ${Number(data.taskStatus) === 3 && ' text-purple-500'}*/}
-                {/*                        ${Number(data.taskStatus) === 4 && ' text-indigo-400'}*/}
-                {/*                        pl-1 md:p0`}>*/}
-                {/*                        {getTaskStatusName(Number(data.taskStatus))}*/}
-                {/*                    </div>*/}
-                {/*                </div>*/}
-                {/*            </div>*/}
-
-                {/*            <div className="text-left md:text-center mt-3 md:mt-0  md:border-x md:border-b md:border-gray-700 md:py-3">*/}
-                {/*                <div className="flex md:block">*/}
-                {/*                    <div className="font-bold w-2/12 md:hidden pl-1">Sector</div>*/}
-                {/*                    <div className="pl-1 md:p0">{getRegisterVerification(Number(data.registerId))}</div>*/}
-                {/*                </div>*/}
-                {/*            </div>*/}
-                {/*            <div className="text-left md:text-center mt-3 md:mt-0  md:border-x md:border-b md:border-gray-700 md:py-3">*/}
-                {/*                <div className="flex md:block">*/}
-                {/*                    <div className="font-bold w-2/12 md:hidden pl-1">Type</div>*/}
-                {/*                    <div className="pl-1 md:p0">{data.securityType}</div>*/}
-                {/*                </div>*/}
-                {/*            </div>*/}
-
-
-
-                {/*            <div className="text-left md:text-center mt-3 md:mt-0  md:border-x md:border-b md:border-gray-700 md:py-3">*/}
-                {/*                <div className="flex md:block">*/}
-                {/*                    <div className="font-bold w-2/12 md:hidden pl-1">Site</div>*/}
-                {/*                    <div className="pl-1 md:p0">{data.siteName}</div>*/}
-                {/*                </div>*/}
-                {/*            </div>*/}
-
-                {/*            <div className="text-left md:text-center mt-3 md:mt-0  md:border-x md:border-b md:border-gray-700 md:py-3">*/}
-                {/*                <div className="flex md:block">*/}
-                {/*                    <div className="font-bold w-2/12 md:hidden pl-1">Adresse</div>*/}
-                {/*                    <div className="pl-1 md:p0">{getSiteInfo(data.siteName)?.siteAddressName}</div>*/}
-                {/*                </div>*/}
-                {/*            </div>*/}
-
-
-
-                {/*            /!*verifier info*!/*/}
-                {/*            <div className="text-left md:text-center mt-3 md:mt-0  md:border-x md:border-b md:border-gray-700 md:py-3">*/}
-                {/*                <div className="flex md:block">*/}
-                {/*                    <div className="font-bold w-2/12 md:hidden pl-1">Vérificateur</div>*/}
-                {/*                    <div className="pl-1 md:p0">{verifier?.name}</div>*/}
-                {/*                </div>*/}
-                {/*            </div>*/}
-                {/*            <div className="text-left md:text-center mt-3 md:mt-0  md:border-x md:border-b md:border-gray-700 md:py-3">*/}
-                {/*                <div className="flex md:block">*/}
-                {/*                    <div className="font-bold w-2/12 md:hidden pl-1">Adresse</div>*/}
-                {/*                    <div className="pl-1 md:p0">{verifier?.addressName}</div>*/}
-                {/*                </div>*/}
-                {/*            </div>*/}
-                {/*            <div className="text-left md:text-center mt-3 md:mt-0  md:border-x md:border-b md:border-gray-700 md:py-3">*/}
-                {/*                <div className="flex md:block">*/}
-                {/*                    <div className="font-bold w-2/12 md:hidden pl-1">Siret</div>*/}
-                {/*                    <div className="pl-1 md:p0">{verifier?.siret}</div>*/}
-                {/*                </div>*/}
-                {/*            </div>*/}
-                {/*            <div className="text-left md:text-center mt-3 md:mt-0  md:border-x md:border-b md:border-gray-700 md:py-3">*/}
-                {/*                <div className="flex md:block">*/}
-                {/*                    <div className="font-bold w-2/12 md:hidden pl-1">Adresse</div>*/}
-                {/*                    <div className="pl-1 md:p0">{verifier?.approvalNumber}</div>*/}
-                {/*                </div>*/}
-                {/*            </div>*/}
-
-                {/*            <div className="text-left md:text-center mt-3 md:mt-0  md:border-x md:border-b md:border-gray-700 md:py-3">*/}
-                {/*                <div className="flex md:block">*/}
-                {/*                    <div className="font-bold w-2/12 md:hidden pl-1">Date de création</div>*/}
-                {/*                    <div className="pl-1 md:p0">{convertTimestampToDate(Number(data.timeStamp))}</div>*/}
-                {/*                </div>*/}
-                {/*            </div>*/}
-
-                {/*            /!*<button className="md:w-16" onClick={() => submitEditVerificationTask(data.account as `0x${string}`, data.name, data.firstName)}>*!/*/}
-                {/*            /!*    <div className="flex justify-end md:block md:text-center border-b border-gray-700 md:border-0 p-2 md:p-0">*!/*/}
-                {/*            /!*        <div className="font-bold md:hidden bg-rose-500 mr-2">Supprimer</div>*!/*/}
-                {/*            /!*        <div className="hidden md:block">X</div>*!/*/}
-                {/*            /!*    </div>*!/*/}
-                {/*            /!*</button>*!/*/}
-                {/*        </div>*/}
-                {/*    )*/}
-                {/*    }*/}
-                {/*</div>*/}
             </div>
         </div>
         </Loader>

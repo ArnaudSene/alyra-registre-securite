@@ -34,7 +34,7 @@ export const VerifierModalForm = ({closeModal}: {closeModal:  MouseEventHandler<
                 }
             })
 
-    }, [isConnected, address, refresh, refreshScreen])
+    }, [isConnected, address])
 
     const submitCreateVerifier = () => {
         writeContractByFunctionName("createVerifier", nameVerifier, addressVerifier, siret, approvalNumber)
@@ -60,7 +60,7 @@ export const VerifierModalForm = ({closeModal}: {closeModal:  MouseEventHandler<
             .finally(() => {
                 setVerifier(true)
                 setVerifierAdded(nameVerifier)
-                setRefresh(Math.random())
+                // setRefresh(Math.random())
                 setRefreshScreen(Math.random())
                 setIsVerifierAdded(false)
                 setNameVerifier("")
