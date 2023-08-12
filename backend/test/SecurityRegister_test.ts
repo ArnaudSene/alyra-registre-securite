@@ -446,7 +446,8 @@ describe( "SecurityRegister", () => {
             await _securityRegister.connect(_company1)
                 .createVerificationTask("fakeSiteName", "fakeSecurityType", 0)
             // Get events
-            const events = await _securityRegister.queryFilter("VerificationTaskCreated");
+            const VerificationTaskCreated = 'event VerificationTaskCreated(address _company, address _verifier, uint256 _registerId, string _securityType, uint256 _taskId, uint8 _taskStatus, string _siteName, uint256 _timestamp)'
+            const events = await _securityRegister.queryFilter(VerificationTaskCreated);
             const eventData = events[0].args;
 
             // 1689978440 timestamp at this moment
